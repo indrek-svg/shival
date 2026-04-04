@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 type Company = { id: string; slug: string; company_name: string; person_name: string; person_role: string; status: string; language: string }
+type Report = { executive_summary: string; session_number: number; created_at: string }
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: 'Ootel', color: 'bg-yellow-100 text-yellow-800' },
   interview_started: { label: 'Intervjuu käib', color: 'bg-blue-100 text-blue-800' },
@@ -14,6 +15,7 @@ export default function AdminPage() {
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [successSlug, setSuccessSlug] = useState('')
+  const [selectedReport, setSelectedReport] = useState<{ company: Company; reports: Report[] } | null>(null)
   const [form, setForm] = useState({ companyName: '', slug: '', personName: '', personRole: '', linkedinInfo: '', extraContext: '', language: 'et' })
   const fetchCompanies = async () => { const res = await fetch('/api/admin/companies'); if (res.ok) setCompanies(await res.json()) }
   useEffect(() => { if (isLoggedIn) fetchCompanies() }, [isLoggedIn])
@@ -30,6 +32,18 @@ export default function AdminPage() {
       fetchCompanies()
     } catch { alert('Ühenduse viga') } finally { setLoading(false) }
   }
+  const handleDelete = async (c: Company) => {
+    if (!confirm(`Kustuta ${c.company_name}? Kõik andmed lähevad kaotsi.`)) return
+    const res = await fetch('/api/delete-company', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId: c.id }) })
+    if (res.ok) fetchCompanies(); else alert('Kustutamine ebaõnnestus')
+  }
+  const handleViewReports = async (c: Company) => {
+    const res = await fetch(`/api/interview/${c.slug}`)
+    const data = await res.json()
+    const reportsRes = await fetch(`/api/admin/reports?companyId=${c.id}`)
+    const reportsData = reportsRes.ok ? await reportsRes.json() : []
+    setSelectedReport({ company: c, reports: reportsData })
+  }
   if (!isLoggedIn) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
       <div className="bg-gray-900 p-8 rounded-2xl w-full max-w-sm border border-gray-800">
@@ -37,6 +51,25 @@ export default function AdminPage() {
         <p className="text-gray-400 mb-6 text-sm">Knowledge Transfer Platform</p>
         <input type="password" placeholder="Parool" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && setIsLoggedIn(true)} className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg px-4 py-3 mb-3 focus:outline-none focus:border-blue-500" />
         <button onClick={() => setIsLoggedIn(true)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition">Logi sisse</button>
+      </div>
+    </div>
+  )
+  if (selectedReport) return (
+    <div className="min-h-screen bg-gray-950 text-white">
+      <div className="max-w-4xl mx-auto px-6 py-10">
+        <button onClick={() => setSelectedReport(null)} className="text-gray-400 hover:text-white mb-6 flex items-center gap-2">← Tagasi</button>
+        <h1 className="text-2xl font-bold mb-1">{selectedReport.company.company_name}</h1>
+        <p className="text-gray-400 mb-8">{selectedReport.company.person_name} · {selectedReport.company.person_role}</p>
+        {selectedReport.reports.length === 0 && <p className="text-gray-500">Raporteid pole veel.</p>}
+        {selectedReport.reports.map((r, i) => (
+          <div key={i} className="bg-gray-900 border border-gray-800 rounded-2xl p-8 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Sessioon {r.session_number} — Raport</h2>
+              <button onClick={() => { const w = window.open('', '_blank'); w?.document.write(`<pre style="font-family:sans-serif;padding:2rem;white-space:pre-wrap">${r.executive_summary}</pre>`); w?.print() }} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg">🖨️ Prindi / PDF</button>
+            </div>
+            <div className="text-gray-300 leading-relaxed whitespace-pre-wrap text-sm">{r.executive_summary}</div>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -76,7 +109,7 @@ export default function AdminPage() {
           </div>
         )}
         <div className="space-y-3">
-          {companies.length === 0 && <div className="text-center py-16 text-gray-500"><p className="text-lg mb-2">Ühtegi intervjuud pole veel loodud</p><p className="text-sm">Vajuta "+ Uus intervjuu" alustamiseks</p></div>}
+          {companies.length === 0 && <div className="text-center py-16 text-gray-500"><p className="text-lg mb-2">Ühtegi intervjuud pole veel loodud</p></div>}
           {companies.map(c => (
             <div key={c.id} className="bg-gray-900 border border-gray-800 rounded-xl p-5 flex items-center justify-between">
               <div>
@@ -84,7 +117,13 @@ export default function AdminPage() {
                 <p className="text-gray-400 text-sm">{c.person_name} · {c.person_role} · {c.language === 'et' ? '🇪🇪 Eesti' : '🇬🇧 English'}</p>
                 <p className="text-gray-600 text-xs mt-1">/interview/{c.slug}</p>
               </div>
-              <div className="flex gap-2"><button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/interview/${c.slug}`); alert('Link kopeeritud!') }} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg transition">Kopeeri link</button><button onClick={async () => { if (!confirm(`Kustuta ${c.company_name}?`)) return; const res = await fetch('/api/delete-company', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId: c.id }) }); if (res.ok) fetchCompanies(); else alert('Kustutamine ebaõnnestus'); }} className="bg-red-900 hover:bg-red-800 text-red-300 text-sm px-4 py-2 rounded-lg transition">Kustuta</button></div>
+              <div className="flex gap-2">
+                <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/interview/${c.slug}`); alert('Link kopeeritud!') }} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg transition">Kopeeri link</button>
+                {(c.status === 'report_ready' || c.status === 'second_session_ready') && (
+                  <button onClick={() => handleViewReports(c)} className="bg-blue-700 hover:bg-blue-600 text-white text-sm px-4 py-2 rounded-lg transition">Vaata raporti</button>
+                )}
+                <button onClick={() => handleDelete(c)} className="bg-red-900 hover:bg-red-800 text-red-300 text-sm px-4 py-2 rounded-lg transition">Kustuta</button>
+              </div>
             </div>
           ))}
         </div>
