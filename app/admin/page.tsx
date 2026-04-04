@@ -84,7 +84,7 @@ export default function AdminPage() {
                 <p className="text-gray-400 text-sm">{c.person_name} · {c.person_role} · {c.language === 'et' ? '🇪🇪 Eesti' : '🇬🇧 English'}</p>
                 <p className="text-gray-600 text-xs mt-1">/interview/{c.slug}</p>
               </div>
-              <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/interview/${c.slug}`); alert('Link kopeeritud!') }} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg transition">Kopeeri link</button>
+              <div className="flex gap-2"><button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/interview/${c.slug}`); alert('Link kopeeritud!') }} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg transition">Kopeeri link</button><button onClick={async () => { if (!confirm(`Kustuta ${c.company_name}?`)) return; const res = await fetch('/api/delete-company', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId: c.id }) }); if (res.ok) fetchCompanies(); else alert('Kustutamine ebaõnnestus'); }} className="bg-red-900 hover:bg-red-800 text-red-300 text-sm px-4 py-2 rounded-lg transition">Kustuta</button></div>
             </div>
           ))}
         </div>
