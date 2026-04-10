@@ -8,7 +8,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   report_ready: { label: 'Raport valmis', color: 'bg-green-100 text-green-800' },
   second_session_ready: { label: 'Teine voor valmis', color: 'bg-green-200 text-green-900' },
 }
-const ADMIN_PASSWORD = 'SINU_PAROOL_SIIA'
+const ADMIN_PASSWORD = 'Teretulemast'
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [password, setPassword] = useState('')
