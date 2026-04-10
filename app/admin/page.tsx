@@ -152,7 +152,7 @@ export default function AdminPage() {
                   )}
                 </div>
               )}
-              <div className="text-gray-300 leading-relaxed whitespace-pre-wrap text-sm">{r.executive_summary}</div>
+              <div className="text-gray-300 leading-relaxed text-sm prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: r.executive_summary.replace(/^## (.+)$/gm, '<h2 class="text-white text-lg font-bold mt-6 mb-2">$1</h2>').replace(/^### (.+)$/gm, '<h3 class="text-gray-200 text-base font-semibold mt-4 mb-2">$1</h3>').replace(/\*\*(.+?)\*\*/g, '<strong class="text-white">$1</strong>').replace(/^---$/gm, '<hr class="border-gray-700 my-4">').replace(/^- (.+)$/gm, '<li class="ml-4 text-gray-300">$1</li>').replace(/\n\n/g, '<br><br>') }} />
             </div>
           )
         })}
