@@ -48,11 +48,14 @@ export default function AdminPage() {
   const handleRegenerate = async (c: Company, sessionNumber: number) => {
     if (!confirm('Genereeri raport uuesti? Vana raport kustutatakse.')) return
     setRegenerating(true)
+    setSelectedReport(prev => prev ? { ...prev, reports: [] } : null)
     try {
       await fetch('/api/admin/reports/delete', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId: c.id, sessionNumber }) })
       const res = await fetch('/api/generate-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId: c.id, sessionNumber }) })
       if (!res.ok) throw new Error()
-      await handleViewReports(c)
+      const reportsRes = await fetch(`/api/admin/reports?companyId=${c.id}`)
+      const reportsData = reportsRes.ok ? await reportsRes.json() : []
+      setSelectedReport({ company: c, reports: reportsData })
     } catch { alert('Viga raporti genereerimisel') } finally { setRegenerating(false) }
   }
   const downloadTranscript = (r: Report) => {
@@ -79,15 +82,24 @@ export default function AdminPage() {
   )
   if (selectedReport) return (
     <div className="min-h-screen bg-gray-950 text-white">
+      {regenerating && (
+        <div className="fixed inset-0 bg-gray-950 bg-opacity-80 flex items-center justify-center z-50">
+          <div className="text-center">
+            <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-white text-lg font-semibold">Genereerin raporti...</p>
+            <p className="text-gray-400 text-sm mt-2">~30-60 sekundit</p>
+          </div>
+        </div>
+      )}
       <div className="max-w-4xl mx-auto px-6 py-10">
         <button onClick={() => setSelectedReport(null)} className="text-gray-400 hover:text-white mb-6 flex items-center gap-2">← Tagasi</button>
         <h1 className="text-2xl font-bold mb-1">{selectedReport.company.company_name}</h1>
         <p className="text-gray-400 mb-8">{selectedReport.company.person_name} · {selectedReport.company.person_role}</p>
-        {selectedReport.reports.length === 0 && (
+        {selectedReport.reports.length === 0 && !regenerating && (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">Raporteid pole veel.</p>
             <button onClick={() => handleRegenerate(selectedReport.company, 1)} disabled={regenerating} className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white px-6 py-3 rounded-lg">
-              {regenerating ? 'Genereerin...' : '⚡ Genereeri raport'}
+              ⚡ Genereeri raport
             </button>
           </div>
         )}
@@ -98,10 +110,8 @@ export default function AdminPage() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold">Sessioon {r.session_number} — Raport</h2>
                 <div className="flex gap-2">
-                  <button onClick={() => handleRegenerate(selectedReport.company, r.session_number)} disabled={regenerating} className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 text-gray-300 text-sm px-4 py-2 rounded-lg">
-                    {regenerating ? '⏳' : '🔄 Genereeri uuesti'}
-                  </button>
-                  <button onClick={() => { const blob = new Blob([r.executive_summary], { type: 'text/html' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `raport-${selectedReport.company.person_name}-sessioon-${r.session_number}.txt`; a.click(); URL.revokeObjectURL(url) }} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg">⬇️ Lae raport alla</button>
+                  <button onClick={() => handleRegenerate(selectedReport.company, r.session_number)} disabled={regenerating} className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 text-gray-300 text-sm px-4 py-2 rounded-lg">🔄 Genereeri uuesti</button>
+                  <button onClick={() => { const blob = new Blob([r.executive_summary], { type: 'text/plain' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `raport-${selectedReport.company.person_name}-sessioon-${r.session_number}.txt`; a.click(); URL.revokeObjectURL(url) }} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg">⬇️ Lae raport alla</button>
                   <button onClick={() => downloadTranscript(r)} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg">⬇️ Transkript</button>
                 </div>
               </div>
