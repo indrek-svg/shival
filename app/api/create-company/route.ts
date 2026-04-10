@@ -4,7 +4,7 @@ import Anthropic from '@anthropic-ai/sdk'
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 export async function POST(req: NextRequest) {
   try {
-    const { companyName, slug, personName, personRole, linkedinInfo, extraContext, language, department, specialization, yearsInRole } = await req.json()
+    const { companyName, slug, personName, personRole, linkedinInfo, extraContext, language, department, specialization, yearsInRole, personalityNotes, interviewContext } = await req.json()
     const { data: existing } = await supabaseAdmin.from('companies').select('id').eq('slug', slug).single()
     if (existing) return NextResponse.json({ error: 'See slug on juba kasutusel' }, { status: 400 })
     const webPrompt = language === 'et'
@@ -16,85 +16,95 @@ export async function POST(req: NextRequest) {
     if (companyError) throw companyError
     const contextBlock = language === 'et'
       ? `Intervjueeritav: ${personName}
-Roll: ${personRole}${department ? `\nOsakond: ${department}` : ''}${specialization ? `\nSpetsialiseerumine: ${specialization}` : ''}${yearsInRole ? `\nAega rollis: ${yearsInRole} aastat` : ''}
+Roll: ${personRole}${department ? `\nOsakond: ${department}` : ''}${specialization ? `\nSpetsialiseerumine: ${specialization}` : ''}${yearsInRole ? `\nAega rollis: ${yearsInRole} aastat` : ''}${personalityNotes ? `\nIseloom ja käitumine: ${personalityNotes}` : ''}${interviewContext ? `\nIntervjuu kontekst: ${interviewContext}` : ''}
 Ettevõte: ${companyName}
 Ettevõtte info: ${webResearchText}
 LinkedIn: ${linkedinInfo || 'pole'}
 Lisainfo: ${extraContext || 'pole'}`
       : `Interviewee: ${personName}
-Role: ${personRole}${department ? `\nDepartment: ${department}` : ''}${specialization ? `\nSpecialization: ${specialization}` : ''}${yearsInRole ? `\nYears in role: ${yearsInRole}` : ''}
+Role: ${personRole}${department ? `\nDepartment: ${department}` : ''}${specialization ? `\nSpecialization: ${specialization}` : ''}${yearsInRole ? `\nYears in role: ${yearsInRole}` : ''}${personalityNotes ? `\nPersonality and behavior: ${personalityNotes}` : ''}${interviewContext ? `\nInterview context: ${interviewContext}` : ''}
 Company: ${companyName}
 Company info: ${webResearchText}
 LinkedIn: ${linkedinInfo || 'none'}
 Extra context: ${extraContext || 'none'}`
 
     const qPrompt = language === 'et'
-      ? `Sa oled maailmatasemel knowledge transfer ekspert, kelle küsimused ühendavad Chris Vossi kalibreeritud küsimuste tehnika, Edgar Scheini Humble Inquiry meetodi ja organisatsioonipsühholoogia parima praktika.
+      ? `Sa oled maailmatasemel knowledge transfer ekspert. Sinu küsimused ühendavad Chris Vossi kalibreeritud küsimuste tehnika, Edgar Scheini Humble Inquiry meetodi ja organisatsioonipsühholoogia parima praktika.
 
 ${contextBlock}
 
-EESMÄRK: See on ESIMENE sessioon — tähistamise intervjuu. Inimene peab tundma end turvaliselt ja väärtustatult, mitte ülekuulatuna. Tahame mõista KES see inimene on, KUIDAS ta mõtleb, mis teda motiveerib ja kus on tema tegelik väärtus organisatsioonis.
+INTERVJUU EESMÄRK (interim juhi vaade):
+Interim juht läheb ettevõttesse ja peab kiiresti mõistma: kes on tegelikult asendamatud, mis töö on kellegi käes mida keegi teine ei tea, kus on peidetud väärtus ja kus on raiskamine. See ei ole tavaline HR intervjuu — see on strateegiline teadmiste kaardistamine.
+
+ESIMENE SESSIOON — tähistamise intervjuu:
+Inimene peab tundma end turvaliselt ja väärtustatult. Küsimused peavad olema inimlikud ja avatud — mitte ülekuulamine. Eesmärk on luua usaldus ja saada inimene rääkima vabalt.
 
 KÜSIMUSTE STRUKTUUR (10 küsimust):
 
-Küsimus 1 — Jäämurdja (inimlik, lihtne, avab vestluse):
-Küsi midagi mis paneb inimese rääkima oma teekonnast — mitte CV faktid vaid tähenduslikud valikud. Näide tüübist: "Mis sind sellele teele tõi?" aga personaliseeri ${personRole} põhjal.
+Küsimus 1 — Jäämurdja (soe, isiklik, lihtne):
+Küsi midagi mis paneb inimese muigama ja end mugavalt tundma. Näiteks mis talle selle töö juures meeldib, mis teda hommikul üles ajab, või mis on olnud kõige põnevam projekt. Personaliseeri ${personRole} ja ${companyName} põhjal. EI TOHI olla kohe tehniline või survestav.
 
 Küsimused 2-3 — Tööstiil ja iseloom:
-Küsi kuidas ta töötab, mitte mida ta teeb. Näide tüübist: "Kuidas sa eelistad infot teistele edasi anda?" või "Mis sind tööl kõige rohkem energiaga laeb?" — aga konkteetsemalt tema rolli kontekstis.
+Küsi KUIDAS ta töötab, mitte MIDA ta teeb. Näiteks kuidas ta eelistab infot jagada, kuidas ta töötab surve all, mis talle energiat annab. Arvesta iseloomuinfoga kui on olemas.
 
-Küsimused 4-5 — Tegelik töö ja väärtus:
-Alari tagasiside põhjal — too välja päris töö, mitte ametinimetus. Küsi: mis ta teeb mida keegi teine ei tee, kes käib tema juurde küsimas ja miks, mis on see asi mis jääks tegemata kui ta lahkuks.
+Küsimused 4-5 — Tegelik töö ja asendamatus:
+Too välja päris töö, mitte ametinimetus. Küsi: mis ta teeb mida keegi teine ei tee, räägi olukorrast kus keegi tuli tema juurde probleemiga mida ainult tema oskas lahendada, mis jääks tegemata kui ta homme lahkuks.
 
 Küsimused 6-7 — Mõttetu töö ja delegeerimine:
-Alari tagasiside: too välja raiskamine ja halb tööjaotus. Küsi: mis on töös mida ta teeb aga mis ei ole tema parim kasutus, mis võiks keegi teine teha, mis protsess vajaks muutmist.
+Too välja raiskamine ja halb tööjaotus. Küsi: mis on töös mida ta teeb aga mis ei ole tema parim kasutus, mis võiks keegi teine teha, mis protsess vajaks tema hinnangul muutmist.
 
 Küsimus 8 — Kasutamata tugevused:
-Kus tunneb ta et tema oskusi ei kasutata piisavalt? Mis valdkonnas looks ta rohkem väärtust kui praegu?
+Kus tunneb ta et tema oskusi ei kasutata piisavalt? Mis valdkonnas looks ta rohkem väärtust kui praeguses rollis?
 
 Küsimused 9-10 — Tulevik ja pärand:
-Mis on tema visioon? Mida ta tahab et järgmine inimene tema kogemusest säilitaks? Mis on see üks asi mida ta soovib oleks teistmoodi?
+Mis on tema visioon ettevõtte jaoks? Mida ta tahab et järgmine inimene tema kogemusest säilitaks? Mis on see üks asi mida ta soovib oleks teistmoodi?
 
-REEGLID:
-- Kõik küsimused algavad "Kuidas", "Mis", "Räägi mulle" — mitte kunagi "Kas"
+GRAMMATIKA JA STIILI REEGLID:
+- Kõik küsimused algavad "Kuidas", "Mis", "Räägi mulle" — mitte kunagi "Kas" või "Kes"
+- Kasuta õiget eesti keele grammatikat — käänded, eessõnad ja asesõnad peavad olema õiged
+- "juurde" mitte "juures" kui räägid kellegi poole pöördumisest
 - Iga küsimus kutsub esile loo või konkreetse näite, mitte fakti
-- Küsimused on lühikesed (1 lause), selged, eesti keeles
-- Personaliseeri KÕIK küsimused ${personName} rolli, osakonna ja tausta põhjal — mitte üldised
-- Kui info puudub, kasuta ettevõtte infot ja rolli nime
+- Küsimused on lühikesed (1 lause), selged, eestikeelsed
+- Personaliseeri KÕIK küsimused ${personName} rolli, osakonna ja tausta põhjal
+- Kui iseloomuinfo on olemas — kohanda küsimuste tooni ja stiili vastavalt
 
 Vasta JSON: {"questions": ["küsimus 1", ...]}`
       : `You are a world-class knowledge transfer expert combining Chris Voss's calibrated questioning technique, Edgar Schein's Humble Inquiry method, and best practices from organizational psychology.
 
 ${contextBlock}
 
-PURPOSE: This is the FIRST session — a celebration interview. The person must feel safe and valued, not interrogated. We want to understand WHO this person is, HOW they think, what motivates them, and where their real value lies in the organization.
+INTERVIEW PURPOSE (interim manager perspective):
+An interim manager enters a company and needs to quickly understand: who is truly indispensable, what work is held by whom that nobody else knows, where is hidden value and where is waste. This is not a standard HR interview — it is strategic knowledge mapping.
+
+FIRST SESSION — celebration interview:
+The person must feel safe and valued. Questions must be human and open — not an interrogation. The goal is to build trust and get the person talking freely.
 
 QUESTION STRUCTURE (10 questions):
 
-Question 1 — Icebreaker (human, simple, opens conversation):
-Ask something that makes them talk about their journey — not CV facts but meaningful choices. Personalize based on ${personRole}.
+Question 1 — Icebreaker (warm, personal, simple):
+Ask something that makes them smile and feel comfortable. Personalize based on ${personRole} and ${companyName}. Must NOT be immediately technical or pressuring.
 
 Questions 2-3 — Work style and character:
-Ask HOW they work, not WHAT they do. Personalize to their role context.
+Ask HOW they work, not WHAT they do. Consider personality notes if available.
 
-Questions 4-5 — Real work and value:
-Based on interim manager feedback — surface real work, not job title. Ask: what they do that nobody else does, who comes to them for help and why, what would be left undone if they left.
+Questions 4-5 — Real work and indispensability:
+Surface real work, not job title. Ask: what they do that nobody else does, tell me about a time someone came to them with a problem only they could solve, what would be left undone if they left tomorrow.
 
 Questions 6-7 — Meaningless work and delegation:
-Surface waste and poor work distribution. Ask: what they do that isn't their best use, what someone else could do, what process needs changing.
+Surface waste and poor work distribution. Ask: what they do that isn't their best use, what someone else could do, what process they think needs changing.
 
 Question 8 — Untapped strengths:
-Where do they feel their skills are underused? What area would they create more value in than currently?
+Where do they feel their skills are underused? What area would they create more value in?
 
 Questions 9-10 — Future and legacy:
-What is their vision? What do they want the next person to preserve? What one thing do they wish had been different?
+What is their vision for the company? What do they want the next person to preserve? What one thing do they wish had been different?
 
-RULES:
-- All questions start with "How", "What", "Tell me" — never "Do you" or "Did you"
+GRAMMAR AND STYLE RULES:
+- All questions start with "How", "What", "Tell me" — never "Do you", "Did you", or "Who"
 - Every question invites a story or specific example, not a fact
 - Questions are short (1 sentence), clear, in English
 - Personalize ALL questions based on ${personName}'s role, department and background
-- If info is missing, use company info and role name
+- If personality notes exist — adapt tone and style accordingly
 
 Respond JSON: {"questions": ["question 1", ...]}`
 
