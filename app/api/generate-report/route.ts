@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const lang = company.language
 
     const summaryPrompt = lang === 'et'
-      ? `Sa oled interim juhi tööriist — knowledge transfer spetsialist kes kaardistab ettevõtte võtmeinimesi. Sinu raport on Alari (interim juhi) tööriist, mitte kliendidokument. Ole toores, täpne ja analüütiline.
+      ? `Sa oled knowledge transfer spetsialist kes kaardistab ettevõtte võtmeinimesi. Sinu raport on juhi tööriist, mitte kliendidokument. Ole toores, täpne ja analüütiline.
 
 DISCLAIMER KÕIGILE HINNANGUTELE: Kõik hinnangud põhinevad ainult ühel intervjuul ja on ligikaudsed. Need ei ole lõplikud järeldused.
 
@@ -28,7 +28,7 @@ ${qaPairs}
 
 LOO RAPORT selles täpses formaadis:
 
-## Knowledge Transfer Raport — Alari tööriist
+## Knowledge Transfer Raport
 **Intervjueeritav:** ${company.person_name}, ${company.person_role}
 **Ettevõte:** ${company.company_name}
 **Sessioon:** ${sessionNumber}
@@ -96,7 +96,7 @@ LOO RAPORT selles täpses formaadis:
 
 ### Mida järgmises sessioonis uurida
 [Teemad mis tulid jutus üles aga jäid pinnapealseks. Ainult vastuste põhjal.]`
-      : `You are an interim manager's tool — a knowledge transfer specialist mapping key people in a company. Your report is Alar's (interim manager's) working tool, not a client document. Be raw, precise and analytical.
+      : `You are a knowledge transfer specialist mapping key people in a company. Your report is a manager's working tool, not a client document. Be raw, precise and analytical.
 
 DISCLAIMER ON ALL ASSESSMENTS: All assessments are based on one interview only and are approximate. These are not final conclusions.
 
@@ -111,7 +111,7 @@ ${qaPairs}
 
 CREATE REPORT in this exact format:
 
-## Knowledge Transfer Report — Working Tool
+## Knowledge Transfer Report
 **Interviewee:** ${company.person_name}, ${company.person_role}
 **Company:** ${company.company_name}
 **Session:** ${sessionNumber}
