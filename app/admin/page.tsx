@@ -8,6 +8,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   report_ready: { label: 'Raport valmis', color: 'bg-green-100 text-green-800' },
   second_session_ready: { label: 'Teine voor valmis', color: 'bg-green-200 text-green-900' },
 }
+const ADMIN_PASSWORD = 'SINU_PAROOL_SIIA'
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [password, setPassword] = useState('')
@@ -20,6 +21,7 @@ export default function AdminPage() {
   const fetchCompanies = async () => { const res = await fetch('/api/admin/companies'); if (res.ok) setCompanies(await res.json()) }
   useEffect(() => { if (isLoggedIn) fetchCompanies() }, [isLoggedIn])
   const generateSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+  const handleLogin = () => { if (password === ADMIN_PASSWORD) { setIsLoggedIn(true) } else { alert('Vale parool') } }
   const handleCreate = async () => {
     if (!form.companyName || !form.slug || !form.personName || !form.personRole) { alert('Täida kõik kohustuslikud väljad'); return }
     setLoading(true)
@@ -56,8 +58,8 @@ export default function AdminPage() {
       <div className="bg-gray-900 p-8 rounded-2xl w-full max-w-sm border border-gray-800">
         <h1 className="text-2xl font-bold text-white mb-2">Sihval Admin</h1>
         <p className="text-gray-400 mb-6 text-sm">Knowledge Transfer Platform</p>
-        <input type="password" placeholder="Parool" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && setIsLoggedIn(true)} className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg px-4 py-3 mb-3 focus:outline-none focus:border-blue-500" />
-        <button onClick={() => setIsLoggedIn(true)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition">Logi sisse</button>
+        <input type="password" placeholder="Parool" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} className="w-full bg-gray-800 text-white border border-gray-700 rounded-lg px-4 py-3 mb-3 focus:outline-none focus:border-blue-500" />
+        <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition">Logi sisse</button>
       </div>
     </div>
   )
@@ -135,3 +137,9 @@ export default function AdminPage() {
                 <button onClick={() => handleDelete(c)} className="bg-red-900 hover:bg-red-800 text-red-300 text-sm px-4 py-2 rounded-lg transition">Kustuta</button>
               </div>
             </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
