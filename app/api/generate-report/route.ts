@@ -11,7 +11,6 @@ export async function POST(req: NextRequest) {
     const { data: answers } = await supabaseAdmin.from('answers').select('*').eq('company_id', companyId).eq('session_number', sessionNumber)
     const qaPairs = questions?.map(q => { const a = answers?.find(a => a.question_id === q.id); return `KÜSIMUS: ${q.question_text}\nVASTUS: ${a?.transcript || 'Vastus puudub'}` }).join('\n\n') || ''
     const lang = company.language
-
     const summaryPrompt = lang === 'et'
       ? `Sa oled knowledge transfer spetsialist kes kaardistab ettevõtte võtmeinimesi. Sinu raport on juhi tööriist, mitte kliendidokument. Ole toores, täpne ja analüütiline.
 
@@ -69,6 +68,14 @@ LOO RAPORT selles täpses formaadis:
 **Otsustusstiil:** [Kuidas ta teeb otsuseid — kiiresti/aeglaselt, üksi/koos]
 **Energiaallikad:** [Mis talle tööl energiat annab]
 **Väljakutsed:** [Mis teda väsitab või frustrreerib]
+**Emotsionaalne toon:** [Kus ta oli enesekindel, kus kõhkles, mis tekitas elevust või ebamugavust — põhine iseloomuinfol kui on olemas]
+
+---
+
+### Vastuolud ja tähelepanekud
+⚠️ *Disclaimer: Tõlgendused põhinevad ühel intervjuul.*
+
+[Kus ta ütles eri kohtades vastupidist. Mida ta EI öelnud kuigi küsimus seda eeldas. Mis jäi poolikuks. Kui vastuolusid pole — kirjuta "Ei tuvastatud selgeid vastuolusid".]
 
 ---
 
@@ -85,7 +92,7 @@ LOO RAPORT selles täpses formaadis:
 ### Vastused küsimuste kaupa
 [Iga küsimuse kohta:]
 **[Küsimus]**
-[Sisuline kokkuvõte 2-3 lausega. Puhasta kõnevead. Mida ta sisuliselt ütles.]
+[Sisuline kokkuvõte 2-3 lausega. Puhasta kõnevead. Mida ta sisuliselt ütles. Märgi kui vastas kiiresti/kindlalt või kõhkles.]
 
 ---
 
@@ -95,7 +102,7 @@ LOO RAPORT selles täpses formaadis:
 ---
 
 ### Mida järgmises sessioonis uurida
-[Teemad mis tulid jutus üles aga jäid pinnapealseks. Ainult vastuste põhjal.]`
+[Teemad mis tulid jutus üles aga jäid pinnapealseks. Vastuolud mida tuleks selgitada. Ainult vastuste põhjal.]`
       : `You are a knowledge transfer specialist mapping key people in a company. Your report is a manager's working tool, not a client document. Be raw, precise and analytical.
 
 DISCLAIMER ON ALL ASSESSMENTS: All assessments are based on one interview only and are approximate. These are not final conclusions.
@@ -152,6 +159,14 @@ CREATE REPORT in this exact format:
 **Decision style:** [How they make decisions — fast/slow, alone/together]
 **Energy sources:** [What gives them energy at work]
 **Challenges:** [What tires or frustrates them]
+**Emotional tone:** [Where they were confident, where they hesitated, what created excitement or discomfort — based on character insights if available]
+
+---
+
+### Contradictions and Observations
+⚠️ *Disclaimer: Interpretations based on one interview.*
+
+[Where they said opposite things. What they did NOT say even though the question implied it. What remained incomplete. If no contradictions — write "No clear contradictions identified".]
 
 ---
 
@@ -167,7 +182,7 @@ CREATE REPORT in this exact format:
 
 ### Answers by Question
 **[Question]**
-[Substantive summary 2-3 sentences. Clean up speech errors. What they actually said.]
+[Substantive summary 2-3 sentences. Clean up speech errors. What they actually said. Note if they answered quickly/confidently or hesitated.]
 
 ---
 
@@ -177,11 +192,10 @@ CREATE REPORT in this exact format:
 ---
 
 ### What to Explore in Next Session
-[Topics that came up but stayed superficial. Based on answers only.]`
+[Topics that came up but stayed superficial. Contradictions to clarify. Based on answers only.]`
 
     const summaryRes = await anthropic.messages.create({ model: 'claude-sonnet-4-20250514', max_tokens: 3000, messages: [{ role: 'user', content: summaryPrompt }] })
     const executiveSummary = summaryRes.content[0].type === 'text' ? summaryRes.content[0].text : ''
-
     const profilePrompt = lang === 'et'
       ? `Analüüsi seda intervjuud ja anna hinnangud skaalal 1-10. Vasta AINULT JSON-ina, mitte midagi muud.
 
@@ -218,9 +232,7 @@ Respond in exactly this format:
     const profileText = profileRes.content[0].type === 'text' ? profileRes.content[0].text : '{}'
     let profileData = {}
     try { profileData = JSON.parse(profileText.replace(/```json|```/g, '').trim()) } catch { profileData = {} }
-
     await supabaseAdmin.from('reports').insert({ company_id: companyId, session_number: sessionNumber, executive_summary: executiveSummary, quality_check_notes: JSON.stringify(profileData) })
-
     const nextPrompt = lang === 'et'
       ? `Loo 15 süvaintervjuu küsimust teiseks sessiooniks ${company.person_name} jaoks (${company.person_role}, ${company.company_name}).
 
@@ -231,6 +243,7 @@ REEGLID:
 - Küsimused peavad põhinema sellel mida ta ÜTLES — mine sügavamale nendesse teemadesse
 - Personaliseeri tema konkreetse rolli ja vastuste põhjal
 - EI TOHI küsida asju mida ta juba täielikult kattis
+- Kui esimeses sessioonis tuvastati vastuolusid — lisa küsimused mis selgitavad neid
 - Teemad: kliendisuhted, meeskond, otsused, strateegia, kirjutamata reeglid
 - Eesti keeles, lühikesed ja konkreetsed
 - Grammatiliselt korrektne eesti keel
@@ -245,6 +258,7 @@ RULES:
 - Build on what they SAID — go deeper into those specific topics
 - Personalize based on their specific answers
 - DO NOT ask about things already covered fully
+- If contradictions were identified in session 1 — add questions to clarify them
 - Topics: client relationships, team, decisions, strategy, unwritten rules
 - English, short and specific
 
