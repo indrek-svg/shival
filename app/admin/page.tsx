@@ -101,7 +101,7 @@ export default function AdminPage() {
                   <button onClick={() => handleRegenerate(selectedReport.company, r.session_number)} disabled={regenerating} className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 text-gray-300 text-sm px-4 py-2 rounded-lg">
                     {regenerating ? '⏳' : '🔄 Genereeri uuesti'}
                   </button>
-                  <button onClick={() => { const w = window.open('', '_blank'); w?.document.write(`<pre style="font-family:sans-serif;padding:2rem;white-space:pre-wrap">${r.executive_summary}</pre>`); w?.print() }} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg">🖨️ Prindi</button>
+                  <button onClick={() => { const blob = new Blob([r.executive_summary], { type: 'text/html' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `raport-${selectedReport.company.person_name}-sessioon-${r.session_number}.txt`; a.click(); URL.revokeObjectURL(url) }} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg">⬇️ Lae raport alla</button>
                   <button onClick={() => downloadTranscript(r)} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg">⬇️ Transkript</button>
                 </div>
               </div>
