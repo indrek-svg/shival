@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 type Company = { id: string; slug: string; company_name: string; person_name: string; person_role: string; status: string; language: string }
-type Report = { executive_summary: string; session_number: number; created_at: string }
+type Report = { executive_summary: string; session_number: number; created_at: string; transcript: string }
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: 'Ootel', color: 'bg-yellow-100 text-yellow-800' },
   interview_started: { label: 'Intervjuu käib', color: 'bg-blue-100 text-blue-800' },
@@ -38,11 +38,18 @@ export default function AdminPage() {
     if (res.ok) fetchCompanies(); else alert('Kustutamine ebaõnnestus')
   }
   const handleViewReports = async (c: Company) => {
-    const res = await fetch(`/api/interview/${c.slug}`)
-    const data = await res.json()
     const reportsRes = await fetch(`/api/admin/reports?companyId=${c.id}`)
     const reportsData = reportsRes.ok ? await reportsRes.json() : []
     setSelectedReport({ company: c, reports: reportsData })
+  }
+  const downloadTranscript = (r: Report) => {
+    const blob = new Blob([r.transcript], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `transkript-sessioon-${r.session_number}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
   }
   if (!isLoggedIn) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -65,7 +72,10 @@ export default function AdminPage() {
           <div key={i} className="bg-gray-900 border border-gray-800 rounded-2xl p-8 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Sessioon {r.session_number} — Raport</h2>
-              <button onClick={() => { const w = window.open('', '_blank'); w?.document.write(`<pre style="font-family:sans-serif;padding:2rem;white-space:pre-wrap">${r.executive_summary}</pre>`); w?.print() }} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg">🖨️ Prindi / PDF</button>
+              <div className="flex gap-2">
+                <button onClick={() => { const w = window.open('', '_blank'); w?.document.write(`<pre style="font-family:sans-serif;padding:2rem;white-space:pre-wrap">${r.executive_summary}</pre>`); w?.print() }} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg">🖨️ Prindi / PDF</button>
+                <button onClick={() => downloadTranscript(r)} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg">⬇️ Transkript</button>
+              </div>
             </div>
             <div className="text-gray-300 leading-relaxed whitespace-pre-wrap text-sm">{r.executive_summary}</div>
           </div>
@@ -125,9 +135,3 @@ export default function AdminPage() {
                 <button onClick={() => handleDelete(c)} className="bg-red-900 hover:bg-red-800 text-red-300 text-sm px-4 py-2 rounded-lg transition">Kustuta</button>
               </div>
             </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
