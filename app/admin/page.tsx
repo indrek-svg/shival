@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 type Company = { id: string; slug: string; company_name: string; person_name: string; person_role: string; status: string; language: string }
-type Report = { executive_summary: string; session_number: number; created_at: string; transcript: string }
+type Report = { executive_summary: string; session_number: number; created_at: string; transcript: string; quality_check_notes: string }
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: 'Ootel', color: 'bg-yellow-100 text-yellow-800' },
   interview_started: { label: 'Intervjuu käib', color: 'bg-blue-100 text-blue-800' },
@@ -17,6 +17,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false)
   const [successSlug, setSuccessSlug] = useState('')
   const [selectedReport, setSelectedReport] = useState<{ company: Company; reports: Report[] } | null>(null)
+  const [regenerating, setRegenerating] = useState(false)
   const [form, setForm] = useState({ companyName: '', slug: '', personName: '', personRole: '', department: '', specialization: '', yearsInRole: '', personalityNotes: '', interviewContext: '', linkedinInfo: '', extraContext: '', language: 'et' })
   const fetchCompanies = async () => { const res = await fetch('/api/admin/companies'); if (res.ok) setCompanies(await res.json()) }
   useEffect(() => { if (isLoggedIn) fetchCompanies() }, [isLoggedIn])
@@ -44,6 +45,16 @@ export default function AdminPage() {
     const reportsData = reportsRes.ok ? await reportsRes.json() : []
     setSelectedReport({ company: c, reports: reportsData })
   }
+  const handleRegenerate = async (c: Company, sessionNumber: number) => {
+    if (!confirm('Genereeri raport uuesti? Vana raport kustutatakse.')) return
+    setRegenerating(true)
+    try {
+      await fetch('/api/admin/reports/delete', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId: c.id, sessionNumber }) })
+      const res = await fetch('/api/generate-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId: c.id, sessionNumber }) })
+      if (!res.ok) throw new Error()
+      await handleViewReports(c)
+    } catch { alert('Viga raporti genereerimisel') } finally { setRegenerating(false) }
+  }
   const downloadTranscript = (r: Report) => {
     const blob = new Blob([r.transcript], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
@@ -52,6 +63,9 @@ export default function AdminPage() {
     a.download = `transkript-sessioon-${r.session_number}.txt`
     a.click()
     URL.revokeObjectURL(url)
+  }
+  const getProfile = (r: Report) => {
+    try { return JSON.parse(r.quality_check_notes || '{}') } catch { return {} }
   }
   if (!isLoggedIn) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -69,19 +83,79 @@ export default function AdminPage() {
         <button onClick={() => setSelectedReport(null)} className="text-gray-400 hover:text-white mb-6 flex items-center gap-2">← Tagasi</button>
         <h1 className="text-2xl font-bold mb-1">{selectedReport.company.company_name}</h1>
         <p className="text-gray-400 mb-8">{selectedReport.company.person_name} · {selectedReport.company.person_role}</p>
-        {selectedReport.reports.length === 0 && <p className="text-gray-500">Raporteid pole veel.</p>}
-        {selectedReport.reports.map((r, i) => (
-          <div key={i} className="bg-gray-900 border border-gray-800 rounded-2xl p-8 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Sessioon {r.session_number} — Raport</h2>
-              <div className="flex gap-2">
-                <button onClick={() => { const w = window.open('', '_blank'); w?.document.write(`<pre style="font-family:sans-serif;padding:2rem;white-space:pre-wrap">${r.executive_summary}</pre>`); w?.print() }} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg">🖨️ Prindi / PDF</button>
-                <button onClick={() => downloadTranscript(r)} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg">⬇️ Transkript</button>
-              </div>
-            </div>
-            <div className="text-gray-300 leading-relaxed whitespace-pre-wrap text-sm">{r.executive_summary}</div>
+        {selectedReport.reports.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-gray-500 mb-4">Raporteid pole veel.</p>
+            <button onClick={() => handleRegenerate(selectedReport.company, 1)} disabled={regenerating} className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white px-6 py-3 rounded-lg">
+              {regenerating ? 'Genereerin...' : '⚡ Genereeri raport'}
+            </button>
           </div>
-        ))}
+        )}
+        {selectedReport.reports.map((r, i) => {
+          const profile = getProfile(r)
+          return (
+            <div key={i} className="bg-gray-900 border border-gray-800 rounded-2xl p-8 mb-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold">Sessioon {r.session_number} — Raport</h2>
+                <div className="flex gap-2">
+                  <button onClick={() => handleRegenerate(selectedReport.company, r.session_number)} disabled={regenerating} className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 text-gray-300 text-sm px-4 py-2 rounded-lg">
+                    {regenerating ? '⏳' : '🔄 Genereeri uuesti'}
+                  </button>
+                  <button onClick={() => { const w = window.open('', '_blank'); w?.document.write(`<pre style="font-family:sans-serif;padding:2rem;white-space:pre-wrap">${r.executive_summary}</pre>`); w?.print() }} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg">🖨️ Prindi</button>
+                  <button onClick={() => downloadTranscript(r)} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg">⬇️ Transkript</button>
+                </div>
+              </div>
+              {profile.risk_level && (
+                <div className="mb-6 p-4 rounded-xl border border-gray-700 bg-gray-800">
+                  <p className="text-xs text-gray-500 mb-3">⚠️ Disclaimer: Põhineb ühel intervjuul. Ligikaudne hinnang.</p>
+                  <div className="flex flex-wrap gap-4">
+                    <div className="text-center">
+                      <p className="text-xs text-gray-400 mb-1">Riskitase</p>
+                      <span className={`text-sm font-bold px-3 py-1 rounded-full ${profile.risk_level === 'KÕRGE' || profile.risk_level === 'HIGH' ? 'bg-red-900 text-red-300' : profile.risk_level === 'KESKMINE' || profile.risk_level === 'MEDIUM' ? 'bg-yellow-900 text-yellow-300' : 'bg-green-900 text-green-300'}`}>{profile.risk_level}</span>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-400 mb-1">Asendamatus</p>
+                      <div className="flex items-center gap-1">
+                        <div className="w-20 h-2 bg-gray-700 rounded-full overflow-hidden"><div className="h-2 bg-red-500 rounded-full" style={{ width: `${(profile.indispensability || 0) * 10}%` }}></div></div>
+                        <span className="text-xs text-gray-300">{profile.indispensability}/10</span>
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-400 mb-1">Dokumenteeritus</p>
+                      <div className="flex items-center gap-1">
+                        <div className="w-20 h-2 bg-gray-700 rounded-full overflow-hidden"><div className="h-2 bg-blue-500 rounded-full" style={{ width: `${(profile.documentation || 0) * 10}%` }}></div></div>
+                        <span className="text-xs text-gray-300">{profile.documentation}/10</span>
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-400 mb-1">Detailid ↔ Suurpilt</p>
+                      <div className="flex items-center gap-1">
+                        <div className="w-20 h-2 bg-gray-700 rounded-full overflow-hidden"><div className="h-2 bg-purple-500 rounded-full" style={{ width: `${(profile.detail_vs_bigpicture || 0) * 10}%` }}></div></div>
+                        <span className="text-xs text-gray-300">{profile.detail_vs_bigpicture}/10</span>
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-400 mb-1">Introvert ↔ Ekstravert</p>
+                      <div className="flex items-center gap-1">
+                        <div className="w-20 h-2 bg-gray-700 rounded-full overflow-hidden"><div className="h-2 bg-green-500 rounded-full" style={{ width: `${(profile.introvert_vs_extrovert || 0) * 10}%` }}></div></div>
+                        <span className="text-xs text-gray-300">{profile.introvert_vs_extrovert}/10</span>
+                      </div>
+                    </div>
+                  </div>
+                  {profile.key_knowledge && profile.key_knowledge.length > 0 && (
+                    <div className="mt-4">
+                      <p className="text-xs text-gray-400 mb-2">Võtmeteadmised:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {profile.key_knowledge.map((k: string, i: number) => <span key={i} className="bg-gray-700 text-gray-300 text-xs px-2 py-1 rounded-lg">{k}</span>)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className="text-gray-300 leading-relaxed whitespace-pre-wrap text-sm">{r.executive_summary}</div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -114,8 +188,8 @@ export default function AdminPage() {
               <div><label className="text-sm text-gray-400 mb-1 block">Spetsialiseerumine</label><input className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.specialization} onChange={e => setForm({ ...form, specialization: e.target.value })} placeholder="nt. B2B müük" /></div>
               <div><label className="text-sm text-gray-400 mb-1 block">Aega rollis (aastates)</label><input className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.yearsInRole} onChange={e => setForm({ ...form, yearsInRole: e.target.value })} placeholder="nt. 5" /></div>
               <div><label className="text-sm text-gray-400 mb-1 block">Keel</label><select className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.language} onChange={e => setForm({ ...form, language: e.target.value })}><option value="et">Eesti keel</option><option value="en">English</option></select></div>
-              <div className="col-span-2"><label className="text-sm text-gray-400 mb-1 block">Iseloom ja käitumine <span className="text-gray-600">(valikuline — nt. introvertne, detailorienteeritud, lahkub ettevõttest)</span></label><input className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.personalityNotes} onChange={e => setForm({ ...form, personalityNotes: e.target.value })} placeholder="nt. väga introvertne, eelistab kirjalikku suhtlust" /></div>
-              <div className="col-span-2"><label className="text-sm text-gray-400 mb-1 block">Intervjuu kontekst <span className="text-gray-600">(valikuline — miks seda intervjuud tehakse)</span></label><input className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.interviewContext} onChange={e => setForm({ ...form, interviewContext: e.target.value })} placeholder="nt. lahkub pensionile, uus juht tuleb, ümberkorraldused" /></div>
+              <div className="col-span-2"><label className="text-sm text-gray-400 mb-1 block">Iseloom ja käitumine <span className="text-gray-600">(valikuline)</span></label><input className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.personalityNotes} onChange={e => setForm({ ...form, personalityNotes: e.target.value })} placeholder="nt. väga introvertne, eelistab kirjalikku suhtlust" /></div>
+              <div className="col-span-2"><label className="text-sm text-gray-400 mb-1 block">Intervjuu kontekst <span className="text-gray-600">(valikuline)</span></label><input className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.interviewContext} onChange={e => setForm({ ...form, interviewContext: e.target.value })} placeholder="nt. lahkub pensionile, uus juht tuleb" /></div>
               <div className="col-span-2"><label className="text-sm text-gray-400 mb-1 block">LinkedIn info</label><textarea className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 h-24 resize-none" value={form.linkedinInfo} onChange={e => setForm({ ...form, linkedinInfo: e.target.value })} placeholder="Kopeeri siia LinkedIn profiili tekst..." /></div>
               <div className="col-span-2"><label className="text-sm text-gray-400 mb-1 block">Lisainfo / kontekst</label><textarea className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 h-20 resize-none" value={form.extraContext} onChange={e => setForm({ ...form, extraContext: e.target.value })} placeholder="Mida on oluline teada selle inimese kohta..." /></div>
             </div>
