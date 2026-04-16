@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-type Company = { id: string; slug: string; company_name: string; person_name: string; person_role: string; status: string; language: string }
+type Company = { id: string; slug: string; company_name: string; person_name: string; person_role: string; status: string; language: string; interview_type: string }
 type Report = { executive_summary: string; session_number: number; created_at: string; transcript: string; quality_check_notes: string }
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: 'Ootel', color: 'bg-yellow-100 text-yellow-800' },
@@ -32,7 +32,7 @@ export default function AdminPage() {
       const data = await res.json()
       if (!res.ok) { alert(data.error || 'Viga'); return }
       setSuccessSlug(data.slug); setShowForm(false)
-     setForm({ companyName: '', slug: '', personName: '', personRole: '', department: '', specialization: '', yearsInRole: '', personalityNotes: '', interviewContext: '', linkedinInfo: '', extraContext: '', language: 'et', interviewType: '' })
+      setForm({ companyName: '', slug: '', personName: '', personRole: '', department: '', specialization: '', yearsInRole: '', personalityNotes: '', interviewContext: '', linkedinInfo: '', extraContext: '', language: 'et', interviewType: '' })
       fetchCompanies()
     } catch { alert('Ühenduse viga') } finally { setLoading(false) }
   }
@@ -71,6 +71,30 @@ export default function AdminPage() {
   const getProfile = (r: Report) => {
     try { return JSON.parse(r.quality_check_notes || '{}') } catch { return {} }
   }
+  const downloadSkillMapPNG = async (company: Company) => {
+    const el = document.getElementById('skill-map-card')
+    if (!el) return
+    const { default: html2canvas } = await import('html2canvas')
+    const canvas = await html2canvas(el, { backgroundColor: '#1f2937', scale: 2 })
+    const link = document.createElement('a')
+    link.download = `skill-map-${company.person_name}.png`
+    link.href = canvas.toDataURL()
+    link.click()
+  }
+  const downloadSkillMapPDF = async (company: Company) => {
+    const el = document.getElementById('skill-map-card')
+    if (!el) return
+    const { default: html2canvas } = await import('html2canvas')
+    const { default: jsPDF } = await import('jspdf')
+    const canvas = await html2canvas(el, { backgroundColor: '#1f2937', scale: 2 })
+    const imgData = canvas.toDataURL('image/png')
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const pdfWidth = pdf.internal.pageSize.getWidth()
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+    pdf.save(`skill-map-${company.person_name}.pdf`)
+  }
+
   if (!isLoggedIn) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
       <div className="bg-gray-900 p-8 rounded-2xl w-full max-w-sm border border-gray-800">
@@ -81,6 +105,7 @@ export default function AdminPage() {
       </div>
     </div>
   )
+
   if (selectedReport) return (
     <div className="min-h-screen bg-gray-950 text-white">
       {regenerating && (
@@ -95,17 +120,27 @@ export default function AdminPage() {
       <div className="max-w-4xl mx-auto px-6 py-10">
         <button onClick={() => setSelectedReport(null)} className="text-gray-400 hover:text-white mb-6 flex items-center gap-2">← Tagasi</button>
         <h1 className="text-2xl font-bold mb-1">{selectedReport.company.company_name}</h1>
-        <p className="text-gray-400 mb-8">{selectedReport.company.person_name} · {selectedReport.company.person_role}</p>
+        <p className="text-gray-400 mb-2">{selectedReport.company.person_name} · {selectedReport.company.person_role}</p>
+        <span className="inline-block text-xs px-2 py-1 rounded-full mb-8 bg-gray-800 text-gray-400">{selectedReport.company.interview_type === 'skill_building' ? '⚡ Skill Building' : '📋 Knowledge Transfer'}</span>
         {selectedReport.reports.length === 0 && !regenerating && (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-4">Raporteid pole veel.</p>
-            <button onClick={() => handleRegenerate(selectedReport.company, 1)} disabled={regenerating} className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white px-6 py-3 rounded-lg">
-              ⚡ Genereeri raport
-            </button>
+            <button onClick={() => handleRegenerate(selectedReport.company, 1)} disabled={regenerating} className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 text-white px-6 py-3 rounded-lg">⚡ Genereeri raport</button>
           </div>
         )}
         {selectedReport.reports.map((r, i) => {
           const profile = getProfile(r)
+          const isSkillBuilding = selectedReport.company.interview_type === 'skill_building'
+          const skillMap = profile.skill_map
+          const skillLayers = [
+            { key: 'identiteet', label: 'Identiteet', color: 'bg-blue-500' },
+            { key: 'toorytm', label: 'Töörütm', color: 'bg-purple-500' },
+            { key: 'otsusteloogika', label: 'Otsusteloogika', color: 'bg-yellow-500' },
+            { key: 'kontekst', label: 'Kontekst', color: 'bg-green-500' },
+            { key: 'inimesed', label: 'Inimesed', color: 'bg-orange-500' },
+            { key: 'kaitumisjuhised', label: 'Käitumisjuhised', color: 'bg-red-500' },
+          ]
+          const skillAvg = skillMap ? Math.round(Object.values(skillMap as Record<string, number>).reduce((a, b) => a + b, 0) / Object.values(skillMap as Record<string, number>).length) : 0
           return (
             <div key={i} className="bg-gray-900 border border-gray-800 rounded-2xl p-8 mb-6">
               <div className="flex items-center justify-between mb-6">
@@ -116,7 +151,61 @@ export default function AdminPage() {
                   <button onClick={() => downloadTranscript(r)} className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm px-4 py-2 rounded-lg">⬇️ Transkript</button>
                 </div>
               </div>
-              {profile.risk_level && (
+
+              {isSkillBuilding && skillMap && (
+                <div className="mb-6">
+                  <div id="skill-map-card" className="p-6 rounded-xl border border-gray-700 bg-gray-800">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-white font-bold text-lg">{selectedReport.company.person_name}</h3>
+                        <p className="text-gray-400 text-sm">{selectedReport.company.person_role} · {selectedReport.company.company_name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-gray-400 text-xs mb-1">AI Journey tase</p>
+                        <span className="text-blue-400 font-bold text-2xl">{profile.ai_journey_level || '–'}<span className="text-gray-500 text-sm">/5</span></span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-4">⚠️ Põhineb ühel intervjuul. Ligikaudne hinnang.</p>
+                    <div className="space-y-3 mb-4">
+                      {skillLayers.map(({ key, label, color }) => {
+                        const pct = skillMap[key] ?? 0
+                        return (
+                          <div key={key} className="flex items-center gap-3">
+                            <p className="text-gray-300 text-sm w-36 shrink-0">{label}</p>
+                            <div className="flex-1 h-3 bg-gray-700 rounded-full overflow-hidden">
+                              <div className={`h-3 ${color} rounded-full transition-all`} style={{ width: `${pct}%` }}></div>
+                            </div>
+                            <span className="text-gray-300 text-sm w-10 text-right">{pct}%</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="pt-4 border-t border-gray-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-gray-400 text-sm">Skill valmidus kokku</p>
+                        <p className="text-white font-bold text-lg">{skillAvg}%</p>
+                      </div>
+                      <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                        <div className="h-2 bg-gradient-to-r from-blue-500 to-green-500 rounded-full" style={{ width: `${skillAvg}%` }}></div>
+                      </div>
+                    </div>
+                    {profile.key_knowledge && profile.key_knowledge.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-xs text-gray-400 mb-2">Võtmeteadmised:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {profile.key_knowledge.map((k: string, i: number) => <span key={i} className="bg-gray-700 text-gray-300 text-xs px-2 py-1 rounded-lg">{k}</span>)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <button onClick={() => downloadSkillMapPNG(selectedReport.company)} className="bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm px-4 py-2 rounded-lg">⬇️ PNG</button>
+                    <button onClick={() => downloadSkillMapPDF(selectedReport.company)} className="bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm px-4 py-2 rounded-lg">⬇️ PDF</button>
+                  </div>
+                </div>
+              )}
+
+              {!isSkillBuilding && profile.risk_level && (
                 <div className="mb-6 p-4 rounded-xl border border-gray-700 bg-gray-800">
                   <p className="text-xs text-gray-500 mb-3">⚠️ Disclaimer: Põhineb ühel intervjuul. Ligikaudne hinnang.</p>
                   <div className="flex flex-wrap gap-4">
@@ -163,6 +252,7 @@ export default function AdminPage() {
                   )}
                 </div>
               )}
+
               <div className="text-gray-300 leading-relaxed text-sm prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: r.executive_summary.replace(/^## (.+)$/gm, '<h2 class="text-white text-lg font-bold mt-6 mb-2">$1</h2>').replace(/^### (.+)$/gm, '<h3 class="text-gray-200 text-base font-semibold mt-4 mb-2">$1</h3>').replace(/\*\*(.+?)\*\*/g, '<strong class="text-white">$1</strong>').replace(/^---$/gm, '<hr class="border-gray-700 my-4">').replace(/^- (.+)$/gm, '<li class="ml-4 text-gray-300">$1</li>').replace(/\n\n/g, '<br><br>') }} />
             </div>
           )
@@ -170,6 +260,7 @@ export default function AdminPage() {
       </div>
     </div>
   )
+
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <div className="max-w-5xl mx-auto px-6 py-10">
@@ -199,7 +290,7 @@ export default function AdminPage() {
               <div><label className="text-sm text-gray-400 mb-1 block">Spetsialiseerumine</label><input className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.specialization} onChange={e => setForm({ ...form, specialization: e.target.value })} placeholder="nt. B2B müük" /></div>
               <div><label className="text-sm text-gray-400 mb-1 block">Aega rollis (aastates)</label><input className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.yearsInRole} onChange={e => setForm({ ...form, yearsInRole: e.target.value })} placeholder="nt. 5" /></div>
               <div><label className="text-sm text-gray-400 mb-1 block">Keel</label><select className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.language} onChange={e => setForm({ ...form, language: e.target.value })}><option value="et">Eesti keel</option><option value="en">English</option></select></div>
-<div><label className="text-sm text-gray-400 mb-1 block">Intervjuu tüüp *</label><select className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.interviewType} onChange={e => setForm({ ...form, interviewType: e.target.value })}><option value="">— Vali tüüp —</option><option value="knowledge_transfer">Teadmussiire</option><option value="skill_building">Skill Building</option></select></div>
+              <div><label className="text-sm text-gray-400 mb-1 block">Intervjuu tüüp *</label><select className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.interviewType} onChange={e => setForm({ ...form, interviewType: e.target.value })}><option value="">— Vali tüüp —</option><option value="knowledge_transfer">Teadmussiire</option><option value="skill_building">Skill Building</option></select></div>
               <div className="col-span-2"><label className="text-sm text-gray-400 mb-1 block">Iseloom ja käitumine <span className="text-gray-600">(valikuline)</span></label><input className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.personalityNotes} onChange={e => setForm({ ...form, personalityNotes: e.target.value })} placeholder="nt. väga introvertne, eelistab kirjalikku suhtlust" /></div>
               <div className="col-span-2"><label className="text-sm text-gray-400 mb-1 block">Intervjuu kontekst <span className="text-gray-600">(valikuline)</span></label><input className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.interviewContext} onChange={e => setForm({ ...form, interviewContext: e.target.value })} placeholder="nt. lahkub pensionile, uus juht tuleb" /></div>
               <div className="col-span-2"><label className="text-sm text-gray-400 mb-1 block">LinkedIn info</label><textarea className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 h-24 resize-none" value={form.linkedinInfo} onChange={e => setForm({ ...form, linkedinInfo: e.target.value })} placeholder="Kopeeri siia LinkedIn profiili tekst..." /></div>
@@ -216,7 +307,7 @@ export default function AdminPage() {
           {companies.map(c => (
             <div key={c.id} className="bg-gray-900 border border-gray-800 rounded-xl p-5 flex items-center justify-between">
               <div>
-                <div className="flex items-center gap-3 mb-1"><h3 className="font-semibold text-lg">{c.company_name}</h3><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusLabels[c.status]?.color || 'bg-gray-700 text-gray-300'}`}>{statusLabels[c.status]?.label || c.status}</span></div>
+                <div className="flex items-center gap-3 mb-1"><h3 className="font-semibold text-lg">{c.company_name}</h3><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusLabels[c.status]?.color || 'bg-gray-700 text-gray-300'}`}>{statusLabels[c.status]?.label || c.status}</span><span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400">{c.interview_type === 'skill_building' ? '⚡ Skill Building' : '📋 Teadmussiire'}</span></div>
                 <p className="text-gray-400 text-sm">{c.person_name} · {c.person_role} · {c.language === 'et' ? '🇪🇪 Eesti' : '🇬🇧 English'}</p>
                 <p className="text-gray-600 text-xs mt-1">/interview/{c.slug}</p>
               </div>

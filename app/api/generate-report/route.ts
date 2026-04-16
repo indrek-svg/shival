@@ -76,20 +76,6 @@ Formaat: "X tegevus võtab Y aega — AI saab seda toetada nii: Z"]
 
 ---
 
-### Skill Map — praegune seis
-[Hinda iga kihi kaetust 0-100% ainult intervjuu põhjal]
-
-Identiteet: [%] — [1 lause mis on teada ja mis puudub]
-Töörütm: [%] — [1 lause mis on teada ja mis puudub]
-Otsusteloogika: [%] — [1 lause mis on teada ja mis puudub]
-Kontekst: [%] — [1 lause mis on teada ja mis puudub]
-Inimesed: [%] — [1 lause mis on teada ja mis puudub]
-Käitumisjuhised: [%] — [1 lause mis on teada ja mis puudub]
-
-Skill valmidus kokku: [keskmine %]
-
----
-
 ### Mis jäi katmata
 [Mis teemad vajaksid süvendamist. Mis küsimustele ei saanud vastust. Konkreetsed augud kaardistuses.]
 
@@ -103,7 +89,7 @@ Skill valmidus kokku: [keskmine %]
 ---
 
 ### Sessioon 2 ettevalmistus
-[3 adaptiivsed küsimust mis tulenevad AINULT sellest transkriptist — mine sügavamale teemadesse mis jäid poolikuks.
+[3 adaptiivsed küsimust mis tulenevad AINULT sellest transkriptist. Mine sügavamale teemadesse mis jäid poolikuks.
 Formaat: küsimus + näide]`
         : `You are an AI adoption expert mapping a person's work and AI readiness. This report is our internal tool for preparing the next session.
 
@@ -163,20 +149,6 @@ Format: "X activity takes Y time — AI can support this by: Z"]
 
 ---
 
-### Skill Map — Current Status
-[Rate each layer 0-100% based only on the interview]
-
-Identity: [%] — [1 sentence what is known and what is missing]
-Work rhythm: [%] — [1 sentence what is known and what is missing]
-Decision logic: [%] — [1 sentence what is known and what is missing]
-Context: [%] — [1 sentence what is known and what is missing]
-People: [%] — [1 sentence what is known and what is missing]
-Behavioral guidelines: [%] — [1 sentence what is known and what is missing]
-
-Overall skill readiness: [average %]
-
----
-
 ### What Was Not Covered
 [Topics needing more depth. Questions without answers. Specific gaps in mapping.]
 
@@ -189,7 +161,7 @@ Overall skill readiness: [average %]
 ---
 
 ### Session 2 Preparation
-[3 adaptive questions from THIS transcript only — go deeper into topics that were left incomplete.
+[3 adaptive questions from THIS transcript only. Go deeper into topics left incomplete.
 Format: question + example]`
     } else {
       summaryPrompt = lang === 'et'
@@ -380,7 +352,7 @@ CREATE REPORT in this exact format:
     const executiveSummary = summaryRes.content[0].type === 'text' ? summaryRes.content[0].text : ''
 
     const profilePrompt = lang === 'et'
-      ? `Analüüsi seda intervjuud ja anna hinnangud skaalal 1-10. Vasta AINULT JSON-ina, mitte midagi muud.
+      ? `Analüüsi seda intervjuud ja anna hinnangud. Vasta AINULT JSON-ina, mitte midagi muud.
 
 Intervjuu tüüp: ${interviewType}
 Intervjuu:
@@ -395,9 +367,17 @@ Vasta täpselt selles formaadis:
   "risk_level": <"KÕRGE" | "KESKMINE" | "MADAL">,
   "ai_journey_level": <1-5, ainult skill_building puhul, muul juhul null>,
   "key_knowledge": [<3-5 kõige olulisemat teadmist mida ta omab, lühikesed>],
+  "skill_map": {
+    "identiteet": <0-100>,
+    "toorytm": <0-100>,
+    "otsusteloogika": <0-100>,
+    "kontekst": <0-100>,
+    "inimesed": <0-100>,
+    "kaitumisjuhised": <0-100>
+  },
   "disclaimer": "Põhineb ühel intervjuul. Ligikaudne hinnang."
 }`
-      : `Analyze this interview and give ratings on a scale of 1-10. Respond ONLY with JSON, nothing else.
+      : `Analyze this interview and give ratings. Respond ONLY with JSON, nothing else.
 
 Interview type: ${interviewType}
 Interview:
@@ -412,6 +392,14 @@ Respond in exactly this format:
   "risk_level": <"HIGH" | "MEDIUM" | "LOW">,
   "ai_journey_level": <1-5, only for skill_building, otherwise null>,
   "key_knowledge": [<3-5 most important pieces of knowledge they hold, short>],
+  "skill_map": {
+    "identiteet": <0-100>,
+    "toorytm": <0-100>,
+    "otsusteloogika": <0-100>,
+    "kontekst": <0-100>,
+    "inimesed": <0-100>,
+    "kaitumisjuhised": <0-100>
+  },
   "disclaimer": "Based on one interview. Approximate assessment."
 }`
 
