@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       : `Research company "${companyName}". Briefly describe (3-5 sentences): industry, size, main activities, market position. If not found, write "No information found".`
     const webRes = await anthropic.messages.create({ model: 'claude-sonnet-4-20250514', max_tokens: 500, messages: [{ role: 'user', content: webPrompt }] })
     const webResearchText = webRes.content[0].type === 'text' ? webRes.content[0].text : ''
-    const { data: company, error: companyError } = await supabaseAdmin.from('companies').insert({ slug, company_name: companyName, person_name: personName, person_role: personRole, linkedin_info: linkedinInfo, extra_context: extraContext, language, web_research: webResearchText, status: 'pending', interview_type: interviewType })
+    const { data: company, error: companyError } = await supabaseAdmin.from('companies').insert({ slug, company_name: companyName, person_name: personName, person_role: personRole, linkedin_info: linkedinInfo, extra_context: extraContext, language, web_research: webResearchText, status: 'pending', interview_type: interviewType }).select().single()
     if (companyError) throw companyError
     const contextBlock = language === 'et'
       ? `Intervjueeritav: ${personName}
@@ -28,7 +28,7 @@ Company info: ${webResearchText}
 LinkedIn: ${linkedinInfo || 'none'}
 Extra context: ${extraContext || 'none'}`
 
-    const qPrompt = language === 'et'
+    const knowledgeTransferPrompt = language === 'et'
       ? `Sa oled maailmatasemel knowledge transfer ekspert. Sinu küsimused ühendavad Chris Vossi kalibreeritud küsimuste tehnika, Edgar Scheini Humble Inquiry meetodi ja organisatsioonipsühholoogia parima praktika.
 
 ${contextBlock}
@@ -107,11 +107,8 @@ GRAMMAR AND STYLE RULES:
 
 Respond JSON: {"questions": ["question 1", ...]}`
 
-    let finalQPrompt = qPrompt
-
-if (interviewType === 'skill_building') {
-  finalQPrompt = language === 'et'
-    ? `Sa oled AI kasutuselevõtu ekspert. Sinu ülesanne on genereerida 10 küsimust esimeseks kalibreerimise sessiooniks.
+    const skillBuildingPrompt = language === 'et'
+      ? `Sa oled AI kasutuselevõtu ekspert. Sinu ülesanne on genereerida 10 küsimust esimeseks kalibreerimise sessiooniks.
 
 ${contextBlock}
 
@@ -121,41 +118,30 @@ Kaardistada kes see inimene on, mis on tema tegelik töö ja mis on tema AI tase
 KÜSIMUSTE STRUKTUUR:
 
 Küsimused 1-4 — AI tase:
-1. Kas kasutad AI-d oma töös praegu?
-   Näide: ChatGPT, Claude, Copilot, Gemini — kas oled proovinud või kasutad regulaarselt?
-2. Mis tööriista kasutad ja kui tihti?
-   Näide: iga päev, kord nädalas, harva — ja kas telefonis, arvutis või mõlemas?
-3. Mis on see koht kus AI sind on aidanud?
-   Näide: kirjutamine, info otsimine, e-kirjad — midagi mis tuli kasuks?
-4. Mis on see koht kus oled proovinud aga ei töötanud?
-   Näide: andis vale vastuse, ei saanud aru mida tahtsid, vastus oli liiga üldine?
+1. Kas kasutad AI-d oma töös praegu? Näide: ChatGPT, Claude, Copilot, Gemini — kas oled proovinud või kasutad regulaarselt?
+2. Mis tööriista kasutad ja kui tihti? Näide: iga päev, kord nädalas, harva — ja kas telefonis, arvutis või mõlemas?
+3. Mis on see koht kus AI sind on aidanud? Näide: kirjutamine, info otsimine, e-kirjad — midagi mis tuli kasuks?
+4. Mis on see koht kus oled proovinud aga ei töötanud? Näide: andis vale vastuse, ei saanud aru mida tahtsid, vastus oli liiga üldine?
 
 Küsimused 5-7 — Identiteet:
-5. Mis on sinu töös see osa mida keegi teine sinu organisatsioonis ei tee?
-   Näide: minul on see müük — keegi teine ei tea kuidas suurtele klientidele läheneda.
-6. Mis on see info mis on ainult sinu peas ja kusagil kirjas pole?
-   Näide: klientide eripärad, varasemate läbirääkimiste taust, kellele helistada.
-7. Kui keegi uus hakkab sinuga koostööd tegema, mida sa neile esimese nädalaga selgitad?
-   Näide: kuidas töötame, mis on meie kultuur, mida ootan — see mis ametijuhendis kirjas pole.
+5. Mis on sinu töös see osa mida keegi teine sinu organisatsioonis ei tee? Näide: minul on see müük — keegi teine ei tea kuidas suurtele klientidele läheneda.
+6. Mis on see info mis on ainult sinu peas ja kusagil kirjas pole? Näide: klientide eripärad, varasemate läbirääkimiste taust, kellele helistada.
+7. Kui keegi uus hakkab sinuga koostööd tegema, mida sa neile esimese nädalaga selgitad? Näide: kuidas töötame, mis on meie kultuur, mida ootan — see mis ametijuhendis kirjas pole.
 
 Küsimused 8-9 — Töörütm:
-8. Kirjelda eelmist nädalat — mis võttis rohkem aega kui ootasid?
-   Näide: kohtumised, e-kirjad, aruanded, mõni konkreetne ülesanne mis venitas.
-9. Mis on see töö mis kordub iga nädal sama moodi?
-   Näide: raportid, koosolekud, klientidele vastamine, arvete kontroll.
+8. Kirjelda eelmist nädalat — mis võttis rohkem aega kui ootasid? Näide: kohtumised, e-kirjad, aruanded, mõni konkreetne ülesanne mis venitas.
+9. Mis on see töö mis kordub iga nädal sama moodi? Näide: raportid, koosolekud, klientidele vastamine, arvete kontroll.
 
 Küsimus 10 — Otsusteloogika:
-10. Mis on otsus mida teed korduvalt ja mis on sinu kriteeriumid?
-    Näide: minul on uus päring — vaatan käivet, võlgu, valdkonda — ja siis tean kas võtame vastu.
+10. Mis on otsus mida teed korduvalt ja mis on sinu kriteeriumid? Näide: minul on uus päring — vaatan käivet, võlgu, valdkonda — ja siis tean kas võtame vastu.
 
 REEGLID:
-- Iga küsimus on eraldi lause
-- Iga küsimus sisaldab konkreetset näidet
-- Küsimused algavad "Kas", "Mis", "Kirjelda" — lühikesed ja selged
+- Iga küsimus on eraldi lause koos konkreetse näitega
 - Personaliseeri ${personName} rolli põhjal
+- Ära pane kahte küsimust ühte lausesse
 
 Vasta JSON: {"questions": ["küsimus koos näitega", ...]}`
-    : `You are an AI adoption expert. Generate 10 questions for a first calibration session.
+      : `You are an AI adoption expert. Generate 10 questions for a first calibration session.
 
 ${contextBlock}
 
@@ -165,33 +151,33 @@ Map who this person is, what their real work looks like, and what their AI level
 QUESTION STRUCTURE:
 
 Questions 1-4 — AI level:
-1. Do you currently use AI in your work?
-2. Which tool do you use and how often?
-3. Where has AI helped you?
-4. Where have you tried it but it didn't work?
+1. Do you currently use AI in your work? Example: ChatGPT, Claude, Copilot — have you tried it or do you use it regularly?
+2. Which tool do you use and how often? Example: every day, once a week, rarely.
+3. Where has AI helped you? Example: writing, research, emails — something that was useful.
+4. Where have you tried it but it didn't work? Example: wrong answers, didn't understand what you wanted.
 
 Questions 5-7 — Identity:
-5. What part of your work does nobody else in your organization do?
-6. What knowledge exists only in your head and is written down nowhere?
-7. When someone new starts working with you, what do you explain in the first week?
+5. What part of your work does nobody else in your organization do? Example: for me it's sales — nobody else knows how to approach large clients.
+6. What knowledge exists only in your head and is written down nowhere? Example: client quirks, negotiation history, who to call.
+7. When someone new starts working with you, what do you explain in the first week? Example: how we work, our culture, what I expect — things not in the job description.
 
 Questions 8-9 — Work rhythm:
-8. Describe last week — what took more time than expected?
-9. What work repeats every week in the same way?
+8. Describe last week — what took more time than expected? Example: meetings, emails, reports, a specific task that dragged on.
+9. What work repeats every week in the same way? Example: reports, meetings, responding to clients, invoice checks.
 
 Question 10 — Decision logic:
-10. What decision do you make repeatedly and what are your criteria?
+10. What decision do you make repeatedly and what are your criteria? Example: new inquiry — I check revenue, debt, industry — then I know if we take it.
 
 RULES:
 - Each question is one sentence with a concrete example
 - Personalize based on ${personName}'s role
+- Never put two questions in one sentence
 
 Respond JSON: {"questions": ["question with example", ...]}`
-}
 
-const qRes = await anthropic.messages.create({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: finalQPrompt }] })
-const qText = qRes.content[0].type === 'text' ? qRes.content[0].text : '{}'
-const { questions } = JSON.parse(qText.replace(/```json|```/g, '').trim())
+    const finalPrompt = interviewType === 'skill_building' ? skillBuildingPrompt : knowledgeTransferPrompt
+
+    const qRes = await anthropic.messages.create({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: finalPrompt }] })
     const qText = qRes.content[0].type === 'text' ? qRes.content[0].text : '{}'
     const { questions } = JSON.parse(qText.replace(/```json|```/g, '').trim())
     await supabaseAdmin.from('questions').insert(questions.map((q: string, i: number) => ({ company_id: company.id, session_number: 1, question_order: i + 1, question_text: q })))
