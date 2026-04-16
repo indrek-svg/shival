@@ -18,20 +18,21 @@ export default function AdminPage() {
   const [successSlug, setSuccessSlug] = useState('')
   const [selectedReport, setSelectedReport] = useState<{ company: Company; reports: Report[] } | null>(null)
   const [regenerating, setRegenerating] = useState(false)
-  const [form, setForm] = useState({ companyName: '', slug: '', personName: '', personRole: '', department: '', specialization: '', yearsInRole: '', personalityNotes: '', interviewContext: '', linkedinInfo: '', extraContext: '', language: 'et' })
+  const [form, setForm] = useState({ companyName: '', slug: '', personName: '', personRole: '', department: '', specialization: '', yearsInRole: '', personalityNotes: '', interviewContext: '', linkedinInfo: '', extraContext: '', language: 'et', interviewType: '' })
   const fetchCompanies = async () => { const res = await fetch('/api/admin/companies'); if (res.ok) setCompanies(await res.json()) }
   useEffect(() => { if (isLoggedIn) fetchCompanies() }, [isLoggedIn])
   const generateSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
   const handleLogin = () => { if (password === ADMIN_PASSWORD) { setIsLoggedIn(true) } else { alert('Vale parool') } }
   const handleCreate = async () => {
     if (!form.companyName || !form.slug || !form.personName || !form.personRole) { alert('Täida kõik kohustuslikud väljad'); return }
+    if (!form.interviewType) { alert('Vali intervjuu tüüp enne jätkamist'); return }
     setLoading(true)
     try {
       const res = await fetch('/api/create-company', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
       const data = await res.json()
       if (!res.ok) { alert(data.error || 'Viga'); return }
       setSuccessSlug(data.slug); setShowForm(false)
-      setForm({ companyName: '', slug: '', personName: '', personRole: '', department: '', specialization: '', yearsInRole: '', personalityNotes: '', interviewContext: '', linkedinInfo: '', extraContext: '', language: 'et' })
+     setForm({ companyName: '', slug: '', personName: '', personRole: '', department: '', specialization: '', yearsInRole: '', personalityNotes: '', interviewContext: '', linkedinInfo: '', extraContext: '', language: 'et', interviewType: '' })
       fetchCompanies()
     } catch { alert('Ühenduse viga') } finally { setLoading(false) }
   }
@@ -198,6 +199,7 @@ export default function AdminPage() {
               <div><label className="text-sm text-gray-400 mb-1 block">Spetsialiseerumine</label><input className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.specialization} onChange={e => setForm({ ...form, specialization: e.target.value })} placeholder="nt. B2B müük" /></div>
               <div><label className="text-sm text-gray-400 mb-1 block">Aega rollis (aastates)</label><input className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.yearsInRole} onChange={e => setForm({ ...form, yearsInRole: e.target.value })} placeholder="nt. 5" /></div>
               <div><label className="text-sm text-gray-400 mb-1 block">Keel</label><select className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.language} onChange={e => setForm({ ...form, language: e.target.value })}><option value="et">Eesti keel</option><option value="en">English</option></select></div>
+<div><label className="text-sm text-gray-400 mb-1 block">Intervjuu tüüp *</label><select className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.interviewType} onChange={e => setForm({ ...form, interviewType: e.target.value })}><option value="">— Vali tüüp —</option><option value="knowledge_transfer">Teadmussiire</option><option value="skill_building">Skill Building</option></select></div>
               <div className="col-span-2"><label className="text-sm text-gray-400 mb-1 block">Iseloom ja käitumine <span className="text-gray-600">(valikuline)</span></label><input className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.personalityNotes} onChange={e => setForm({ ...form, personalityNotes: e.target.value })} placeholder="nt. väga introvertne, eelistab kirjalikku suhtlust" /></div>
               <div className="col-span-2"><label className="text-sm text-gray-400 mb-1 block">Intervjuu kontekst <span className="text-gray-600">(valikuline)</span></label><input className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" value={form.interviewContext} onChange={e => setForm({ ...form, interviewContext: e.target.value })} placeholder="nt. lahkub pensionile, uus juht tuleb" /></div>
               <div className="col-span-2"><label className="text-sm text-gray-400 mb-1 block">LinkedIn info</label><textarea className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500 h-24 resize-none" value={form.linkedinInfo} onChange={e => setForm({ ...form, linkedinInfo: e.target.value })} placeholder="Kopeeri siia LinkedIn profiili tekst..." /></div>
