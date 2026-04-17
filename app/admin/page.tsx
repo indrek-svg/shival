@@ -75,8 +75,7 @@ export default function AdminPage() {
     try {
       const el = document.getElementById('skill-map-card')
       if (!el) { alert('Kaart ei leitud'); return }
-      const domtoimage = (await import('dom-to-image')).default
-      const dataUrl = await domtoimage.toPng(el, { bgcolor: '#1f2937' })
+     const domtoimage = (await import('dom-to-image-more')).default
       const link = document.createElement('a')
       link.download = `skill-map-${company.person_name}.png`
       link.href = dataUrl
@@ -89,7 +88,7 @@ export default function AdminPage() {
     try {
       const el = document.getElementById('skill-map-card')
       if (!el) { alert('Kaart ei leitud'); return }
-      const domtoimage = (await import('dom-to-image')).default
+      const domtoimage = (await import('dom-to-image-more')).default
       const jsPDF = (await import('jspdf')).default
       const dataUrl = await domtoimage.toPng(el, { bgcolor: '#1f2937' })
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })

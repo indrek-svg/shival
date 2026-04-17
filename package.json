@@ -11,7 +11,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.81.0",
     "@supabase/supabase-js": "^2.101.1",
-    "dom-to-image": "^2.6.0",
+    "dom-to-image-more": "^3.7.2",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "next": "16.2.2",
