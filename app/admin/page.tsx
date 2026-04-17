@@ -71,30 +71,35 @@ export default function AdminPage() {
   const getProfile = (r: Report) => {
     try { return JSON.parse(r.quality_check_notes || '{}') } catch { return {} }
   }
-  const downloadSkillMapPNG = async (company: Company) => {
-    const el = document.getElementById('skill-map-card')
-    if (!el) return
-    const { default: html2canvas } = await import('html2canvas')
-    const canvas = await html2canvas(el, { backgroundColor: '#1f2937', scale: 2 })
-    const link = document.createElement('a')
-    link.download = `skill-map-${company.person_name}.png`
-    link.href = canvas.toDataURL()
-    link.click()
+ const downloadSkillMapPNG = async (company: Company) => {
+    try {
+      const el = document.getElementById('skill-map-card')
+      if (!el) { alert('Kaart ei leitud'); return }
+      const html2canvas = (await import('html2canvas')).default
+      const canvas = await html2canvas(el, { backgroundColor: '#1f2937', scale: 2, useCORS: true, allowTaint: true })
+      const link = document.createElement('a')
+      link.download = `skill-map-${company.person_name}.png`
+      link.href = canvas.toDataURL('image/png')
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch(e) { alert('Viga: ' + e) }
   }
   const downloadSkillMapPDF = async (company: Company) => {
-    const el = document.getElementById('skill-map-card')
-    if (!el) return
-    const { default: html2canvas } = await import('html2canvas')
-    const { default: jsPDF } = await import('jspdf')
-    const canvas = await html2canvas(el, { backgroundColor: '#1f2937', scale: 2 })
-    const imgData = canvas.toDataURL('image/png')
-    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
-    const pdfWidth = pdf.internal.pageSize.getWidth()
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
-    pdf.save(`skill-map-${company.person_name}.pdf`)
+    try {
+      const el = document.getElementById('skill-map-card')
+      if (!el) { alert('Kaart ei leitud'); return }
+      const html2canvas = (await import('html2canvas')).default
+      const jsPDF = (await import('jspdf')).default
+      const canvas = await html2canvas(el, { backgroundColor: '#1f2937', scale: 2, useCORS: true, allowTaint: true })
+      const imgData = canvas.toDataURL('image/png')
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+      const pdfWidth = pdf.internal.pageSize.getWidth()
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+      pdf.save(`skill-map-${company.person_name}.pdf`)
+    } catch(e) { alert('Viga: ' + e) }
   }
-
   if (!isLoggedIn) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
       <div className="bg-gray-900 p-8 rounded-2xl w-full max-w-sm border border-gray-800">
