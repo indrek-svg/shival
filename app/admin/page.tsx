@@ -71,15 +71,15 @@ export default function AdminPage() {
   const getProfile = (r: Report) => {
     try { return JSON.parse(r.quality_check_notes || '{}') } catch { return {} }
   }
- const downloadSkillMapPNG = async (company: Company) => {
+  const downloadSkillMapPNG = async (company: Company) => {
     try {
       const el = document.getElementById('skill-map-card')
       if (!el) { alert('Kaart ei leitud'); return }
-      const html2canvas = (await import('html2canvas')).default
-      const canvas = await html2canvas(el, { backgroundColor: '#1f2937', scale: 2, useCORS: true, allowTaint: true })
+      const domtoimage = (await import('dom-to-image')).default
+      const dataUrl = await domtoimage.toPng(el, { bgcolor: '#1f2937' })
       const link = document.createElement('a')
       link.download = `skill-map-${company.person_name}.png`
-      link.href = canvas.toDataURL('image/png')
+      link.href = dataUrl
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -89,17 +89,20 @@ export default function AdminPage() {
     try {
       const el = document.getElementById('skill-map-card')
       if (!el) { alert('Kaart ei leitud'); return }
-      const html2canvas = (await import('html2canvas')).default
+      const domtoimage = (await import('dom-to-image')).default
       const jsPDF = (await import('jspdf')).default
-      const canvas = await html2canvas(el, { backgroundColor: '#1f2937', scale: 2, useCORS: true, allowTaint: true })
-      const imgData = canvas.toDataURL('image/png')
+      const dataUrl = await domtoimage.toPng(el, { bgcolor: '#1f2937' })
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
       const pdfWidth = pdf.internal.pageSize.getWidth()
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+      const img = new Image()
+      img.src = dataUrl
+      await new Promise(resolve => { img.onload = resolve })
+      const pdfHeight = (img.height * pdfWidth) / img.width
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight)
       pdf.save(`skill-map-${company.person_name}.pdf`)
     } catch(e) { alert('Viga: ' + e) }
   }
+
   if (!isLoggedIn) return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
       <div className="bg-gray-900 p-8 rounded-2xl w-full max-w-sm border border-gray-800">
@@ -138,12 +141,12 @@ export default function AdminPage() {
           const isSkillBuilding = selectedReport.company.interview_type === 'skill_building'
           const skillMap = profile.skill_map
           const skillLayers = [
-            { key: 'identiteet', label: 'Identiteet', color: 'bg-blue-500' },
-            { key: 'toorytm', label: 'Töörütm', color: 'bg-purple-500' },
-            { key: 'otsusteloogika', label: 'Otsusteloogika', color: 'bg-yellow-500' },
-            { key: 'kontekst', label: 'Kontekst', color: 'bg-green-500' },
-            { key: 'inimesed', label: 'Inimesed', color: 'bg-orange-500' },
-            { key: 'kaitumisjuhised', label: 'Käitumisjuhised', color: 'bg-red-500' },
+            { key: 'identiteet', label: 'Identiteet', color: '#3b82f6' },
+            { key: 'toorytm', label: 'Töörütm', color: '#a855f7' },
+            { key: 'otsusteloogika', label: 'Otsusteloogika', color: '#eab308' },
+            { key: 'kontekst', label: 'Kontekst', color: '#22c55e' },
+            { key: 'inimesed', label: 'Inimesed', color: '#f97316' },
+            { key: 'kaitumisjuhised', label: 'Käitumisjuhised', color: '#ef4444' },
           ]
           const skillAvg = skillMap ? Math.round(Object.values(skillMap as Record<string, number>).reduce((a, b) => a + b, 0) / Object.values(skillMap as Record<string, number>).length) : 0
           return (
@@ -159,46 +162,46 @@ export default function AdminPage() {
 
               {isSkillBuilding && skillMap && (
                 <div className="mb-6">
-                  <div id="skill-map-card" className="p-6 rounded-xl border border-gray-700 bg-gray-800">
-                    <div className="flex items-center justify-between mb-4">
+                  <div id="skill-map-card" style={{ backgroundColor: '#1f2937', borderRadius: '12px', border: '1px solid #374151', padding: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                       <div>
-                        <h3 className="text-white font-bold text-lg">{selectedReport.company.person_name}</h3>
-                        <p className="text-gray-400 text-sm">{selectedReport.company.person_role} · {selectedReport.company.company_name}</p>
+                        <p style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '18px', margin: 0 }}>{selectedReport.company.person_name}</p>
+                        <p style={{ color: '#9ca3af', fontSize: '14px', margin: '4px 0 0 0' }}>{selectedReport.company.person_role} · {selectedReport.company.company_name}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-gray-400 text-xs mb-1">AI Journey tase</p>
-                        <span className="text-blue-400 font-bold text-2xl">{profile.ai_journey_level || '–'}<span className="text-gray-500 text-sm">/5</span></span>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ color: '#9ca3af', fontSize: '12px', margin: '0 0 4px 0' }}>AI Journey tase</p>
+                        <span style={{ color: '#60a5fa', fontWeight: 'bold', fontSize: '28px' }}>{profile.ai_journey_level || '–'}<span style={{ color: '#6b7280', fontSize: '14px' }}>/5</span></span>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-500 mb-4">⚠️ Põhineb ühel intervjuul. Ligikaudne hinnang.</p>
-                    <div className="space-y-3 mb-4">
+                    <p style={{ color: '#6b7280', fontSize: '12px', marginBottom: '16px' }}>⚠️ Põhineb ühel intervjuul. Ligikaudne hinnang.</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
                       {skillLayers.map(({ key, label, color }) => {
                         const pct = skillMap[key] ?? 0
                         return (
-                          <div key={key} className="flex items-center gap-3">
-                            <p className="text-gray-300 text-sm w-36 shrink-0">{label}</p>
-                            <div className="flex-1 h-3 bg-gray-700 rounded-full overflow-hidden">
-                              <div className={`h-3 ${color} rounded-full transition-all`} style={{ width: `${pct}%` }}></div>
+                          <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <p style={{ color: '#d1d5db', fontSize: '14px', width: '140px', flexShrink: 0, margin: 0 }}>{label}</p>
+                            <div style={{ flex: 1, height: '12px', backgroundColor: '#374151', borderRadius: '6px', overflow: 'hidden' }}>
+                              <div style={{ width: `${pct}%`, height: '12px', backgroundColor: color, borderRadius: '6px' }}></div>
                             </div>
-                            <span className="text-gray-300 text-sm w-10 text-right">{pct}%</span>
+                            <span style={{ color: '#d1d5db', fontSize: '14px', width: '40px', textAlign: 'right' }}>{pct}%</span>
                           </div>
                         )
                       })}
                     </div>
-                    <div className="pt-4 border-t border-gray-700">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-gray-400 text-sm">Skill valmidus kokku</p>
-                        <p className="text-white font-bold text-lg">{skillAvg}%</p>
+                    <div style={{ borderTop: '1px solid #374151', paddingTop: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>Skill valmidus kokku</p>
+                        <p style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '20px', margin: 0 }}>{skillAvg}%</p>
                       </div>
-                      <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-                        <div className="h-2 bg-gradient-to-r from-blue-500 to-green-500 rounded-full" style={{ width: `${skillAvg}%` }}></div>
+                      <div style={{ width: '100%', height: '8px', backgroundColor: '#374151', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: `${skillAvg}%`, height: '8px', backgroundColor: '#3b82f6', borderRadius: '4px' }}></div>
                       </div>
                     </div>
                     {profile.key_knowledge && profile.key_knowledge.length > 0 && (
-                      <div className="mt-4">
-                        <p className="text-xs text-gray-400 mb-2">Võtmeteadmised:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {profile.key_knowledge.map((k: string, i: number) => <span key={i} className="bg-gray-700 text-gray-300 text-xs px-2 py-1 rounded-lg">{k}</span>)}
+                      <div style={{ marginTop: '16px' }}>
+                        <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>Võtmeteadmised:</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {profile.key_knowledge.map((k: string, i: number) => <span key={i} style={{ backgroundColor: '#374151', color: '#d1d5db', fontSize: '12px', padding: '4px 8px', borderRadius: '6px' }}>{k}</span>)}
                         </div>
                       </div>
                     )}
