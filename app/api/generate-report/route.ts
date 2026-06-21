@@ -348,7 +348,7 @@ CREATE REPORT in this exact format:
 [Topics that came up but stayed superficial. Contradictions to clarify.]`
     }
 
-    const summaryRes = await anthropic.messages.create({ model: 'claude-sonnet-4-20250514', max_tokens: 3000, messages: [{ role: 'user', content: summaryPrompt }] })
+    const summaryRes = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 3000, messages: [{ role: 'user', content: summaryPrompt }] })
     const executiveSummary = summaryRes.content[0].type === 'text' ? summaryRes.content[0].text : ''
 
     const profilePrompt = lang === 'et'
@@ -403,7 +403,7 @@ Respond in exactly this format:
   "disclaimer": "Based on one interview. Approximate assessment."
 }`
 
-    const profileRes = await anthropic.messages.create({ model: 'claude-sonnet-4-20250514', max_tokens: 500, messages: [{ role: 'user', content: profilePrompt }] })
+    const profileRes = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 500, messages: [{ role: 'user', content: profilePrompt }] })
     const profileText = profileRes.content[0].type === 'text' ? profileRes.content[0].text : '{}'
     let profileData = {}
     try { profileData = JSON.parse(profileText.replace(/```json|```/g, '').trim()) } catch { profileData = {} }
@@ -442,7 +442,7 @@ RULES:
 
 Respond JSON: {"questions": ["question 1", ...]}`
 
-    const nextRes = await anthropic.messages.create({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: [{ role: 'user', content: nextPrompt }] })
+    const nextRes = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 2000, messages: [{ role: 'user', content: nextPrompt }] })
     const nextText = nextRes.content[0].type === 'text' ? nextRes.content[0].text : '{}'
     const { questions: nextQs } = JSON.parse(nextText.replace(/```json|```/g, '').trim())
     await supabaseAdmin.from('questions').insert(nextQs.map((q: string, i: number) => ({ company_id: companyId, session_number: 2, question_order: i + 1, question_text: q })))
