@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     const webPrompt = language === 'et'
       ? `Otsi infot ettevõtte "${companyName}" kohta. Kirjelda lühidalt (3-5 lauset): valdkond, suurus, põhitegevus, turupositsioon. Kui infot pole, kirjuta "Infot ei leitud".`
       : `Research company "${companyName}". Briefly describe (3-5 sentences): industry, size, main activities, market position. If not found, write "No information found".`
-    const webRes = await anthropic.messages.create({ model: 'claude-sonnet-4-20250514', max_tokens: 500, messages: [{ role: 'user', content: webPrompt }] })
+    const webRes = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 500, messages: [{ role: 'user', content: webPrompt }] })
     const webResearchText = webRes.content[0].type === 'text' ? webRes.content[0].text : ''
     const { data: company, error: companyError } = await supabaseAdmin.from('companies').insert({ slug, company_name: companyName, person_name: personName, person_role: personRole, linkedin_info: linkedinInfo, extra_context: extraContext, language, web_research: webResearchText, status: 'pending', interview_type: interviewType }).select().single()
     if (companyError) throw companyError
@@ -177,7 +177,7 @@ Respond JSON: {"questions": ["question with example", ...]}`
 
     const finalPrompt = interviewType === 'skill_building' ? skillBuildingPrompt : knowledgeTransferPrompt
 
-    const qRes = await anthropic.messages.create({ model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{ role: 'user', content: finalPrompt }] })
+    const qRes = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1500, messages: [{ role: 'user', content: finalPrompt }] })
     const qText = qRes.content[0].type === 'text' ? qRes.content[0].text : '{}'
     const { questions } = JSON.parse(qText.replace(/```json|```/g, '').trim())
     await supabaseAdmin.from('questions').insert(questions.map((q: string, i: number) => ({ company_id: company.id, session_number: 1, question_order: i + 1, question_text: q })))
