@@ -247,8 +247,7 @@ export default function InterviewPage() {
                 setProcessingMessage(t('Genereerin raporti...', 'Generating report...'))
                 const r2 = await fetch('/api/generate-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId: company!.id, sessionNumber }) })
                 const d2 = await r2.json()
-                if (d2.summary) { setReport(d2.summary); setStage('report') }
-                else { setError('Viga raporti genereerimisel'); setStage('error') }
+                if (d2.executiveSummary || d2.success) { if (d2.executiveSummary) setReport(d2.executiveSummary); const r3 = await fetch('/api/interview/' + slug); const d3 = await r3.json(); setNextSessionQuestions((d3.questions || []).filter(function(q) { return q.session_number === 2; })); setStage('report'); } else { setError('Viga raporti genereerimisel'); setStage('error'); }
               }} className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg px-10 py-4 rounded-2xl transition w-full">
                 🚀 {t('Saada transkriptsioonile →', 'Send for transcription →')}
               </button>
@@ -283,7 +282,7 @@ export default function InterviewPage() {
       </div>
     </div>
   )
-  if (stage === 'processing') return <div className="min-h-screen bg-gray-950 flex items-center justify-center"><div className="text-center"><div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div><p className="text-gray-300 text-lg">{processingMessage}</p></div></div>
+  if (stage === 'processing') { const isTranscribing = processingMessage.includes('Transkr') || processingMessage.includes('Transcr'); const pct = isTranscribing ? 25 : 70; return (<div className="min-h-screen bg-gray-950 flex items-center justify-center"><div className="text-center max-w-xs w-full px-6"><div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div><p className="text-gray-200 text-lg font-medium mb-2">{processingMessage}</p><p className="text-gray-500 text-sm mb-6">{isTranscribing ? t('Palun oota, see võtab ~20 sekundit', 'Please wait, this takes ~20 seconds') : t('Palun oota, see võtab ~40 sekundit', 'Please wait, this takes ~40 seconds')}</p><div className="bg-gray-800 rounded-full h-3 w-full overflow-hidden"><div className="bg-blue-500 h-3 rounded-full transition-all duration-[2000ms]" style={{ width: pct + '%' }}></div></div><div className="flex justify-between mt-1"><span className="text-gray-600 text-xs">0%</span><span className="text-blue-400 text-xs font-medium">{pct}%</span><span className="text-gray-600 text-xs">100%</span></div><div className="mt-6 space-y-2"><div className="flex items-center gap-2 text-sm"><span className={isTranscribing ? 'text-blue-400' : 'text-green-400'}>{isTranscribing ? '⟳' : '✓'}</span><span className={isTranscribing ? 'text-gray-300' : 'text-gray-500'}>{t('Helifaili transkribeerimine', 'Audio transcription')}</span></div><div className="flex items-center gap-2 text-sm"><span className={!isTranscribing ? 'text-blue-400' : 'text-gray-600'}>{!isTranscribing ? '⟳' : '○'}</span><span className={!isTranscribing ? 'text-gray-300' : 'text-gray-600'}>{t('AI raporti genereerimine', 'AI report generation')}</span></div></div></div></div>); }
   if (stage === 'recording' && q) return (
     <div className="min-h-screen bg-gray-950 flex flex-col">
       <div className="h-1 bg-gray-800"><div className="h-1 bg-blue-600 transition-all duration-500" style={{ width: `${progress}%` }}></div></div>
@@ -317,7 +316,8 @@ export default function InterviewPage() {
             <div className="space-y-2 mb-5">
               {nextSessionQuestions.slice(0, 5).map((q, i) => (
                 <div key={q.id} className="flex gap-2 text-sm">
-                  <span className="text-blue-400 font-bold shrink-0">{i + 1}.</span>
+                  <span className="text-
+                  blue-400 font-bold shrink-0">{i + 1}.</span>
                   <p className="text-blue-200">{q.question_text}</p>
                 </div>
               ))}
