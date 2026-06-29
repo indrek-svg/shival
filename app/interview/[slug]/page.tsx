@@ -216,7 +216,7 @@ export default function InterviewPage() {
             ))}
           </div>
         </div>
-        {!isRecording ? (
+        {!isRecording ? (<>
           <button onClick={startFreeRecording} className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg px-10 py-4 rounded-2xl transition w-full">
             🎙️ {t('Alusta salvestust', 'Start recording')}
           </button>
