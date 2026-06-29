@@ -14,9 +14,17 @@ export async function POST(req: NextRequest) {
     const language = formData.get('language') as string || 'et'
     const isFreeRecording = formData.get('freeRecording') === 'true'
     if (!audioFile) return NextResponse.json({ error: 'Audio fail puudub' }, { status: 400 })
-    const transcription = await openai.audio.transcriptions.create({ file: audioFile, model: 'whisper-1', language: language === 'et' ? 'et' : 'en' })
-    let finalTranscript = transcription.text
-    if (isFreeRecording && transcription.text.length > 100) {
+    // .txt file — skip Whisper, use text directly
+    const isTxtFile = audioFile.name && (audioFile.name.endsWith('.txt') || audioFile.type === 'text/plain')
+    let rawTranscript = ''
+    if (isTxtFile) {
+      rawTranscript = await audioFile.text()
+    } else {
+      const transcription = await openai.audio.transcriptions.create({ file: audioFile, model: 'whisper-1', language: language === 'et' ? 'et' : 'en' })
+      rawTranscript = rawTranscript
+    }
+    let finalTranscript = rawTranscript
+    if (isFreeRecording && rawTranscript.length > 100) {
       const cleanPrompt = language === 'et'
         ? `Sa oled intervjuu analüütik. Sinu ülesanne on rikastada transkripti — mitte kustutada, vaid kategoriseerida ja lisada psühholoogilisi tähelepanekuid.
 
@@ -49,7 +57,7 @@ REEGLID:
 - Kui midagi pole selge — märgi küsimusena
 
 Transkript:
-${transcription.text}
+${rawTranscript}
 
 Tagasta struktureeritud analüüs.`
         : `You are an interview analyst. Your task is to enrich the transcript — not delete, but categorize and add psychological observations.
@@ -83,12 +91,12 @@ RULES:
 - If something is unclear — mark it as a question
 
 Transcript:
-${transcription.text}
+${rawTranscript}
 
 Return structured analysis.`
 
       const cleanRes = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 4000, messages: [{ role: 'user', content: cleanPrompt }] })
-      finalTranscript = cleanRes.content[0].type === 'text' ? cleanRes.content[0].text : transcription.text
+      finalTranscript = cleanRes.content[0].type === 'text' ? cleanRes.content[0].text : rawTranscript
     }
     const insertData: any = { company_id: companyId, session_number: sessionNumber, transcript: finalTranscript }; if (questionId) insertData.question_id = questionId; await supabaseAdmin.from('answers').insert(insertData)
     await supabaseAdmin.from('companies').update({ status: 'interview_started' }).eq('id', companyId)
