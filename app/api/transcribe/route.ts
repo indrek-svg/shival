@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       rawTranscript = rawTranscript
     }
     let finalTranscript = rawTranscript
-    if (isFreeRecording && rawTranscript.length > 100) {
+    if (isFreeRecording && !isTxtFile && rawTranscript.length > 100) {
       const cleanPrompt = language === 'et'
         ? `Sa oled intervjuu analüütik. Sinu ülesanne on rikastada transkripti — mitte kustutada, vaid kategoriseerida ja lisada psühholoogilisi tähelepanekuid.
 
