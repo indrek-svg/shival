@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 type Company = { id: string; company_name: string; person_name: string; person_role: string; language: string; status: string }
 type Question = { id: string; question_text: string; question_order: number; session_number: number }
-type Stage = 'loading' | 'preview' | 'welcome' | 'recording' | 'processing' | 'report' | 'error' | 'free_recording' | 'transcript_ready'
+type Stage = 'loading' | 'preview' | 'welcome' | 'recording' | 'processing' | 'report' | 'error' | 'free_recording'
 export default function InterviewPage() {
   const params = useParams()
   const slug = params.slug as string
@@ -24,7 +24,6 @@ export default function InterviewPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
-  const [transcriptText, setTranscriptText] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const MAX_FREE_SECONDS = 90 * 60
@@ -138,6 +137,24 @@ export default function InterviewPage() {
       setStage('report')
     } catch (e: any) { setError(e.message); setStage('error') }
   }
+  const uploadAndProcess = async (file) => {
+    if (!company || !file) return
+    setUploadedFile(file)
+    setStage('processing')
+    const isTxt = file.name.endsWith('.txt')
+    setProcessingMessage(isTxt ? t('Loen transkripti...', 'Reading transcript...') : t('Transkribeerin helifaili...', 'Transcribing audio file...'))
+    const fd = new FormData()
+    fd.append('audio', file)
+    fd.append('companyId', company.id)
+    fd.append('sessionNumber', String(sessionNumber))
+    fd.append('language', company.language || 'et')
+    fd.append('freeRecording', 'true')
+    const res = await fetch('/api/transcribe', { method: 'POST', body: fd })
+    if (!res.ok) { setError(t('Viga faili üleslaadimisel', 'File upload error')); setStage('error'); return }
+    const tData = await res.json()
+    setTranscriptText(tData.transcript || '')
+    setStage('transcript_ready')
+  }
   const startSecondSession = async () => {
     const res = await fetch(`/api/interview/${slug}`)
     const data = await res.json()
@@ -194,6 +211,19 @@ export default function InterviewPage() {
           <button onClick={() => setStage('free_recording')} className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-lg px-10 py-4 rounded-2xl transition w-full">
             🎤 {t('Intervjueerija salvestab vestluse →', 'Interviewer records conversation →')}
           </button>
+          <div className="relative flex items-center my-1">
+            <div className="flex-grow border-t border-gray-800"></div>
+            <span className="mx-3 text-gray-600 text-sm">{t('või lae üles', 'or upload')}</span>
+            <div className="flex-grow border-t border-gray-800"></div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = 'audio/*,.m4a,.mp3,.wav,.ogg,.webm'; fileInputRef.current.click(); } }} className="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 font-medium px-4 py-3 rounded-xl flex-1 flex items-center justify-center gap-2 transition">
+              📁 {t('Helifail', 'Audio file')}
+            </button>
+            <button onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = '.txt,text/plain'; fileInputRef.current.click(); } }} className="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 font-medium px-4 py-3 rounded-xl flex-1 flex items-center justify-center gap-2 transition">
+              📄 {t('Tekstifail', 'Text file')}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -226,7 +256,7 @@ export default function InterviewPage() {
             <span className="mx-4 text-gray-500 text-sm">{t('või', 'or')}</span>
             <div className="flex-grow border-t border-gray-700"></div>
           </div>
-          <input ref={fileInputRef} type="file" accept="audio/*,.m4a,.mp3,.wav,.ogg,.webm,.txt,text/plain" onChange={e => setUploadedFile(e.target.files?.[0] || null)} className="hidden" />
+          <input ref={fileInputRef} type="file" accept="audio/*,.m4a,.mp3,.wav,.ogg,.webm" onChange={e => { const f = e.target.files?.[0]; if (f) uploadAndProcess(f); }} className="hidden" />
           {!uploadedFile ? (
             <button onClick={() => fileInputRef.current?.click()} className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-lg px-10 py-4 rounded-2xl transition w-full">
               📁 {t('Lae üles helifail (.m4a, .mp3, .wav)', 'Upload audio file (.m4a, .mp3, .wav)')}
@@ -236,8 +266,7 @@ export default function InterviewPage() {
               <p className="text-gray-400 text-sm text-center">✓ {uploadedFile.name}</p>
               <button onClick={async () => {
                 setStage('processing')
-                const isTxt = uploadedFile.name.endsWith('.txt')
-                setProcessingMessage(isTxt ? t('Loen transkripti...', 'Reading transcript...') : t('Transkribeerin helifaili...', 'Transcribing audio file...'))
+                setProcessingMessage(t('Transkribeerin helifaili...', 'Transcribing audio file...'))
                 const fd = new FormData()
                 fd.append('audio', uploadedFile)
                 fd.append('companyId', company!.id)
@@ -246,9 +275,10 @@ export default function InterviewPage() {
                 fd.append('freeRecording', 'true')
                 const res = await fetch('/api/transcribe', { method: 'POST', body: fd })
                 if (!res.ok) { setError(t('Viga faili üleslaadimise', 'File upload error')); setStage('error'); return }
-                const tData = await res.json()
-                setTranscriptText(tData.transcript || '')
-                setStage('transcript_ready')
+                setProcessingMessage(t('Genereerin raporti...', 'Generating report...'))
+                const r2 = await fetch('/api/generate-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId: company!.id, sessionNumber }) })
+                const d2 = await r2.json()
+                if (d2.executiveSummary || d2.success) { if (d2.executiveSummary) setReport(d2.executiveSummary); const r3 = await fetch('/api/interview/' + slug); const d3 = await r3.json(); setNextSessionQuestions((d3.questions || []).filter(function(q) { return q.session_number === 2; })); setStage('report'); } else { setError('Viga raporti genereerimisel'); setStage('error'); }
               }} className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg px-10 py-4 rounded-2xl transition w-full">
                 🚀 {t('Saada transkriptsioonile →', 'Send for transcription →')}
               </button>
@@ -283,46 +313,6 @@ export default function InterviewPage() {
       </div>
     </div>
   )
-  if (stage === 'transcript_ready') {
-    const downloadTranscript = function() {
-      var blob = new Blob([transcriptText], {type:'text/plain;charset=utf-8'})
-      var url = URL.createObjectURL(blob)
-      var a = document.createElement('a')
-      a.href = url
-      a.download = (company ? company.company_name + '_' + company.person_name : 'transkript') + '_transkript.txt'
-      a.click()
-      URL.revokeObjectURL(url)
-    }
-    var generateFromTranscript = async function() {
-      setStage('processing')
-      setProcessingMessage(t('Genereerin raporti...', 'Generating report...'))
-      const r2 = await fetch('/api/generate-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId: company!.id, sessionNumber }) })
-      const d2 = await r2.json()
-      if (d2.executiveSummary || d2.success) { if (d2.executiveSummary) setReport(d2.executiveSummary); const r3 = await fetch('/api/interview/' + slug); const d3 = await r3.json(); setNextSessionQuestions((d3.questions || []).filter(function(q) { return q.session_number === 2; })); setStage('report'); } else { setError('Viga raporti genereerimisel'); setStage('error'); }
-    }
-    return (
-      <div className="min-h-screen bg-gray-950 text-white">
-        <div className="max-w-2xl mx-auto px-6 py-12">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4"><span className="text-2xl">✓</span></div>
-            <h1 className="text-2xl font-bold mb-1">{t('Transkriptsioon valmis', 'Transcription ready')}</h1>
-            <p className="text-gray-400 text-sm">{t('Lae alla ja kontrolli enne raporti genereerimist', 'Download and check before generating report')}</p>
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-6 max-h-64 overflow-y-auto">
-            <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">{transcriptText || t('(Transkript on tühi — vaikne salvestus või tekst puudub)', '(Transcript is empty — silent recording or no text)')}</p>
-          </div>
-          <div className="space-y-3">
-            <button onClick={downloadTranscript} className="bg-gray-700 hover:bg-gray-600 text-white font-medium px-6 py-3 rounded-xl w-full flex items-center justify-center gap-2 transition">
-              ⬇️ {t('Lae transkript alla (.txt)', 'Download transcript (.txt)')}
-            </button>
-            <button onClick={generateFromTranscript} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-4 rounded-xl w-full transition">
-              🚀 {t('Genereeri raport →', 'Generate report →')}
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
   if (stage === 'processing') { const isTranscribing = processingMessage.includes('Transkr') || processingMessage.includes('Transcr'); const pct = isTranscribing ? 25 : 70; return (<div className="min-h-screen bg-gray-950 flex items-center justify-center"><div className="text-center max-w-xs w-full px-6"><div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div><p className="text-gray-200 text-lg font-medium mb-2">{processingMessage}</p><p className="text-gray-500 text-sm mb-6">{isTranscribing ? t('Palun oota, see võtab ~20 sekundit', 'Please wait, this takes ~20 seconds') : t('Palun oota, see võtab ~40 sekundit', 'Please wait, this takes ~40 seconds')}</p><div className="bg-gray-800 rounded-full h-3 w-full overflow-hidden"><div className="bg-blue-500 h-3 rounded-full transition-all duration-[2000ms]" style={{ width: pct + '%' }}></div></div><div className="flex justify-between mt-1"><span className="text-gray-600 text-xs">0%</span><span className="text-blue-400 text-xs font-medium">{pct}%</span><span className="text-gray-600 text-xs">100%</span></div><div className="mt-6 space-y-2"><div className="flex items-center gap-2 text-sm"><span className={isTranscribing ? 'text-blue-400' : 'text-green-400'}>{isTranscribing ? '⟳' : '✓'}</span><span className={isTranscribing ? 'text-gray-300' : 'text-gray-500'}>{t('Helifaili transkribeerimine', 'Audio transcription')}</span></div><div className="flex items-center gap-2 text-sm"><span className={!isTranscribing ? 'text-blue-400' : 'text-gray-600'}>{!isTranscribing ? '⟳' : '○'}</span><span className={!isTranscribing ? 'text-gray-300' : 'text-gray-600'}>{t('AI raporti genereerimine', 'AI report generation')}</span></div></div></div></div>); }
   if (stage === 'recording' && q) return (
     <div className="min-h-screen bg-gray-950 flex flex-col">
