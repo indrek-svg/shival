@@ -217,12 +217,14 @@ export default function InterviewPage() {
             <div className="flex-grow border-t border-gray-800"></div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => { const i = document.createElement('input'); i.type='file'; i.accept='audio/*,.m4a,.mp3,.wav,.ogg,.webm'; i.onchange=function(e){ const f=e.target.files&&e.target.files[0]; if(f) uploadAndProcess(f); }; i.click(); }} className="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 font-medium px-4 py-3 rounded-xl flex-1 flex items-center justify-center gap-2 transition">
+            <label className="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 font-medium px-4 py-3 rounded-xl flex-1 flex items-center justify-center gap-2 transition cursor-pointer">
+              <input type="file" accept="audio/*,.m4a,.mp3,.wav,.ogg,.webm" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadAndProcess(f); e.target.value = ''; }} />
               📁 {t('Helifail', 'Audio file')}
-            </button>
-            <button onClick={() => { const i = document.createElement('input'); i.type='file'; i.accept='.txt,text/plain'; i.onchange=function(e){ const f=e.target.files&&e.target.files[0]; if(f) uploadAndProcess(f); }; i.click(); }} className="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 font-medium px-4 py-3 rounded-xl flex-1 flex items-center justify-center gap-2 transition">
+            </label>
+            <label className="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 font-medium px-4 py-3 rounded-xl flex-1 flex items-center justify-center gap-2 transition cursor-pointer">
+              <input type="file" accept=".txt,text/plain" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadAndProcess(f); e.target.value = ''; }} />
               📄 {t('Tekstifail', 'Text file')}
-            </button>
+            </label>
           </div>
         </div>
       </div>
