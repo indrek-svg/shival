@@ -24,6 +24,7 @@ export default function InterviewPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [transcriptText, setTranscriptText] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const MAX_FREE_SECONDS = 90 * 60
@@ -352,6 +353,7 @@ export default function InterviewPage() {
                   <span className="text-
                   blue-400 font-bold shr
                   ink-0">{i + 1}.</span>
+
                 
                   <p className="text-blue-200">{q.question_text}</p>
                 </div>
