@@ -217,10 +217,10 @@ export default function InterviewPage() {
             <div className="flex-grow border-t border-gray-800"></div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = 'audio/*,.m4a,.mp3,.wav,.ogg,.webm'; fileInputRef.current.click(); } }} className="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 font-medium px-4 py-3 rounded-xl flex-1 flex items-center justify-center gap-2 transition">
+            <button onClick={() => { const i = document.createElement('input'); i.type='file'; i.accept='audio/*,.m4a,.mp3,.wav,.ogg,.webm'; i.onchange=function(e){ const f=e.target.files&&e.target.files[0]; if(f) uploadAndProcess(f); }; i.click(); }} className="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 font-medium px-4 py-3 rounded-xl flex-1 flex items-center justify-center gap-2 transition">
               📁 {t('Helifail', 'Audio file')}
             </button>
-            <button onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = '.txt,text/plain'; fileInputRef.current.click(); } }} className="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 font-medium px-4 py-3 rounded-xl flex-1 flex items-center justify-center gap-2 transition">
+            <button onClick={() => { const i = document.createElement('input'); i.type='file'; i.accept='.txt,text/plain'; i.onchange=function(e){ const f=e.target.files&&e.target.files[0]; if(f) uploadAndProcess(f); }; i.click(); }} className="bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 font-medium px-4 py-3 rounded-xl flex-1 flex items-center justify-center gap-2 transition">
               📄 {t('Tekstifail', 'Text file')}
             </button>
           </div>
@@ -350,6 +350,7 @@ export default function InterviewPage() {
                   <span className="text-
                   blue-400 font-bold shr
                   ink-0">{i + 1}.</span>
+                
                   <p className="text-blue-200">{q.question_text}</p>
                 </div>
               ))}
