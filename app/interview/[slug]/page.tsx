@@ -257,6 +257,7 @@ export default function InterviewPage() {
               </button>
             </div>
           )}
+        </>
         ) : (
           <div className="text-center">
             <div className="flex items-center justify-center gap-3 mb-2">
