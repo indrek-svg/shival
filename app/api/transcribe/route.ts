@@ -87,10 +87,10 @@ ${transcription.text}
 
 Return structured analysis.`
 
-      const cleanRes = await anthropic.messages.create({ model: 'claude-sonnet-4-20250514', max_tokens: 4000, messages: [{ role: 'user', content: cleanPrompt }] })
+      const cleanRes = await anthropic.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 4000, messages: [{ role: 'user', content: cleanPrompt }] })
       finalTranscript = cleanRes.content[0].type === 'text' ? cleanRes.content[0].text : transcription.text
     }
-    await supabaseAdmin.from('answers').insert({ company_id: companyId, question_id: questionId, session_number: sessionNumber, transcript: finalTranscript })
+    const insertData: any = { company_id: companyId, session_number: sessionNumber, transcript: finalTranscript }; if (questionId) insertData.question_id = questionId; await supabaseAdmin.from('answers').insert(insertData)
     await supabaseAdmin.from('companies').update({ status: 'interview_started' }).eq('id', companyId)
     return NextResponse.json({ transcript: finalTranscript })
   } catch (error: any) {
