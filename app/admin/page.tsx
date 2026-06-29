@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 type Company = { id: string; slug: string; company_name: string; person_name: string; person_role: string; status: string; language: string; interview_type: string }
 type Report = { executive_summary: string; session_number: number; created_at: string; transcript: string; quality_check_notes: string }
 const statusLabels: Record<string, { label: string; color: string }> = {
@@ -18,6 +18,10 @@ export default function AdminPage() {
   const [successSlug, setSuccessSlug] = useState('')
   const [selectedReport, setSelectedReport] = useState<{ company: Company; reports: Report[] } | null>(null)
   const [regenerating, setRegenerating] = useState(false)
+  const [adminUploadFile, setAdminUploadFile] = useState(null)
+  const [adminUploadNote, setAdminUploadNote] = useState("")
+  const [adminUploading, setAdminUploading] = useState(false)
+  const adminFileRef = useRef(null)
   const [form, setForm] = useState({ companyName: '', slug: '', personName: '', personRole: '', department: '', specialization: '', yearsInRole: '', personalityNotes: '', interviewContext: '', linkedinInfo: '', extraContext: '', language: 'et', interviewType: '' })
   const fetchCompanies = async () => { const res = await fetch('/api/admin/companies'); if (res.ok) setCompanies(await res.json()) }
   useEffect(() => { if (isLoggedIn) fetchCompanies() }, [isLoggedIn])
