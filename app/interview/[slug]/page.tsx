@@ -156,6 +156,24 @@ export default function InterviewPage() {
     setTranscriptText(tData.transcript || '')
     setStage('transcript_ready')
   }
+  const uploadAndUpdateReport = async (file) => {
+    if (!company || !file) return
+    setStage('processing')
+    const isTxt = file.name.endsWith('.txt')
+    setProcessingMessage(isTxt ? t('Loen transkripti...', 'Reading transcript...') : t('Transkribeerin helifaili...', 'Transcribing audio file...'))
+    const fd = new FormData()
+    fd.append('audio', file)
+    fd.append('companyId', company.id)
+    fd.append('sessionNumber', String(sessionNumber))
+    fd.append('language', company.language || 'et')
+    fd.append('freeRecording', 'true')
+    const res = await fetch('/api/transcribe', { method: 'POST', body: fd })
+    if (!res.ok) { setError(t('Viga faili üleslaadimisel', 'File upload error')); setStage('error'); return }
+    setProcessingMessage(t('Uuendan raportit...', 'Updating report...'))
+    const r2 = await fetch('/api/generate-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId: company.id, sessionNumber }) })
+    const d2 = await r2.json()
+    if (d2.executiveSummary || d2.success) { if (d2.executiveSummary) setReport(d2.executiveSummary); setStage('report'); } else { setError(t('Viga raporti uuendamisel', 'Error updating report')); setStage('error'); }
+  }
   const startSecondSession = async () => {
     const res = await fetch(`/api/interview/${slug}`)
     const data = await res.json()
@@ -365,6 +383,13 @@ export default function InterviewPage() {
         <div className="text-center mb-10"><div className="w-16 h-16 bg-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4"><span className="text-2xl">✓</span></div><h1 className="text-3xl font-bold mb-2">{t('Intervjuu on valmis!', 'Interview complete!')}</h1><p className="text-gray-400">{company?.person_name} · {company?.company_name}</p></div>
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 mb-6"><h2 className="text-xl font-semibold mb-4">Executive Summary</h2><div className="text-gray-300 leading-relaxed whitespace-pre-wrap text-sm">{report}</div></div>
         <div className="flex gap-3 mb-8"><button onClick={() => window.print()} className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-3 rounded-xl transition">🖨️ {t('Salvesta PDF', 'Save as PDF')}</button></div>
+        <div className="border-t border-gray-800 pt-6 mb-6">
+          <p className="text-gray-500 text-xs mb-3 text-center">{t('Lisa uus salvestis raporti täiendamiseks', 'Add new recording to improve report')}</p>
+          <label className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-medium px-4 py-3 rounded-xl w-full flex items-center justify-center gap-2 transition cursor-pointer">
+            <input type="file" accept="audio/*,.m4a,.mp3,.wav,.ogg,.webm,.txt,text/plain" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadAndUpdateReport(f); e.target.value = ''; }} />
+            📁 {t('Täienda raportit uue salvestisega', 'Improve report with new recording')}
+          </label>
+        </div>
         {nextSessionQuestions.length > 0 && (
           <div className="bg-blue-950 border border-blue-800 rounded-2xl p-6 mb-4">
             <h3 className="text-lg font-semibold mb-2">{t('Teine sessioon — küsimuste eelvaade', 'Second session — question preview')}</h3>
@@ -375,6 +400,7 @@ export default function InterviewPage() {
                   <span className="text-
                   blue-400 font-bold shr
                   ink-0">{i + 1}.</span>
+
                 
 
                 
