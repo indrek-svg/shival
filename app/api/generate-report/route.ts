@@ -10,6 +10,8 @@ export async function POST(req: NextRequest) {
     const { data: questions } = await supabaseAdmin.from('questions').select('*').eq('company_id', companyId).eq('session_number', sessionNumber).order('question_order')
     const { data: answers } = await supabaseAdmin.from('answers').select('*').eq('company_id', companyId).eq('session_number', sessionNumber)
     const qaPairs = questions?.map(q => { const a = answers?.find(a => a.question_id === q.id); return `KÜSIMUS: ${q.question_text}\nVASTUS: ${a?.transcript || 'Vastus puudub'}` }).join('\n\n') || ''
+    const freeAnswers = answers?.filter(a => !a.question_id) || []
+    const freeTranscripts = freeAnswers.length > 0 ? '\n\nLISASALVESTISED:\n' + freeAnswers.map((a, i) => `Salvestis ${i+1}:\n${a.transcript}`).join('\n\n') : ''
     const lang = company.language
     const interviewType = company.interview_type || 'knowledge_transfer'
 
