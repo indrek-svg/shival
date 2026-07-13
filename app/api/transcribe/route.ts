@@ -4,6 +4,8 @@ import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+export const maxDuration = 60
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
