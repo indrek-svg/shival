@@ -385,7 +385,16 @@ export default function InterviewPage() {
         <div className="flex gap-3 mb-8"><button onClick={() => window.print()} className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-3 rounded-xl transition">🖨️ {t('Salvesta PDF', 'Save as PDF')}</button></div>
         <div className="border-t border-gray-800 pt-6 mb-6">
           <p className="text-gray-500 text-xs mb-3 text-center">{t('Lisa uus salvestis raporti täiendamiseks', 'Add new recording to improve report')}</p>
-          <label className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-medium px-4 py-3 rounded-xl w-full flex items-center justify-center gap-2 transition cursor-pointer">
+          <div className="flex gap-2">
+  <label className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-medium px-4 py-3 rounded-xl flex-1 flex items-center justify-center gap-2 transition cursor-pointer">
+    <input type="file" accept="audio/*,.m4a,.mp3,.wav,.ogg,.webm" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadAndUpdateReport(f); e.target.value = ''; }} />
+    📁 {t('Helifail', 'Audio file')}
+  </label>
+  <label className="bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 font-medium px-4 py-3 rounded-xl flex-1 flex items-center justify-center gap-2 transition cursor-pointer">
+    <input type="file" accept=".txt,text/plain" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadAndUpdateReport(f); e.target.value = ''; }} />
+    📄 {t('Tekstifail', 'Text file')}
+  </label>
+</div>
             <input type="file" accept="audio/*,.m4a,.mp3,.wav,.ogg,.webm,.txt,text/plain" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadAndUpdateReport(f); e.target.value = ''; }} />
             📁 {t('Täienda raportit uue salvestisega', 'Improve report with new recording')}
           </label>
