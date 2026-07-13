@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
     const qaPairs = questions?.map(q => { const a = answers?.find(a => a.question_id === q.id); return `KÜSIMUS: ${q.question_text}\nVASTUS: ${a?.transcript || 'Vastus puudub'}` }).join('\n\n') || ''
     const freeAnswers = answers?.filter(a => !a.question_id) || []
     const freeTranscripts = freeAnswers.length > 0 ? '\n\nLISASALVESTISED:\n' + freeAnswers.map((a, i) => `Salvestis ${i+1}:\n${a.transcript}`).join('\n\n') : ''
+    const fullInterview = qaPairs + freeTranscripts
     const lang = company.language
     const interviewType = company.interview_type || 'knowledge_transfer'
 
@@ -27,7 +28,7 @@ Sessioon: ${sessionNumber}
 Lisainfo: ${company.extra_context || 'pole'}
 
 INTERVJUU:
-${qaPairs}
+${fullInterview}
 
 KRIITILISED REEGLID:
 - Kirjuta AINULT seda mida intervjueeritav ütles
@@ -101,7 +102,7 @@ Session: ${sessionNumber}
 Extra context: ${company.extra_context || 'none'}
 
 INTERVIEW:
-${qaPairs}
+${fullInterview}
 
 CRITICAL RULES:
 - Write ONLY what the interviewee said
@@ -112,7 +113,7 @@ CRITICAL RULES:
 CREATE REPORT in this exact format:
 
 ## Skill Building Report — Session ${sessionNumber}
-**Interviewee:** ${company.person_name}, ${company.person_role}
+**Interviewed:** ${company.person_name}, ${company.person_role}
 **Company:** ${company.company_name}
 **Date:** ${new Date().toLocaleDateString('en-GB')}
 
@@ -178,7 +179,7 @@ LinkedIn info: ${company.linkedin_info || 'pole'}
 Lisainfo: ${company.extra_context || 'pole'}
 
 INTERVJUU:
-${qaPairs}
+${fullInterview}
 
 LOO RAPORT selles täpses formaadis:
 
@@ -269,12 +270,12 @@ LinkedIn: ${company.linkedin_info || 'none'}
 Extra context: ${company.extra_context || 'none'}
 
 INTERVIEW:
-${qaPairs}
+${fullInterview}
 
 CREATE REPORT in this exact format:
 
 ## Knowledge Transfer Report
-**Interviewee:** ${company.person_name}, ${company.person_role}
+**Interviewed:** ${company.person_name}, ${company.person_role}
 **Company:** ${company.company_name}
 **Session:** ${sessionNumber}
 **Date:** ${new Date().toLocaleDateString('en-GB')}
@@ -358,7 +359,7 @@ CREATE REPORT in this exact format:
 
 Intervjuu tüüp: ${interviewType}
 Intervjuu:
-${qaPairs}
+${fullInterview}
 
 Vasta täpselt selles formaadis:
 {
@@ -383,7 +384,7 @@ Vasta täpselt selles formaadis:
 
 Interview type: ${interviewType}
 Interview:
-${qaPairs}
+${fullInterview}
 
 Respond in exactly this format:
 {
@@ -417,7 +418,7 @@ Respond in exactly this format:
 
 Intervjuu tüüp: ${interviewType}
 Esimese sessiooni vastused:
-${qaPairs}
+${fullInterview}
 
 REEGLID:
 - Küsimused peavad põhinema sellel mida ta ÜTLES — mine sügavamale nendesse teemadesse
@@ -432,7 +433,7 @@ Vasta JSON: {"questions": ["küsimus 1", ...]}`
 
 Interview type: ${interviewType}
 First session answers:
-${qaPairs}
+${fullInterview}
 
 RULES:
 - Build on what they SAID — go deeper into those specific topics
