@@ -371,7 +371,7 @@ export default function InterviewPage() {
           <div className="flex flex-col items-center gap-4">
             {!isRecording
               ? <button onClick={startRecording} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg px-10 py-4 rounded-2xl transition w-full max-w-sm">🎙️ {t('Alusta vastamist', 'Start answering')}</button>
-              : <div className="w-full max-w-sm"><div className="flex items-center justify-center gap-2 mb-4"><div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div><span className="text-red-400 font-medium">{t('Salvestamine...', 'Recording...')}</span></div><button onClick={stopAndTranscribe} className="bg-gray-700 hover:bg-gray-600 text-white font-bold text-lg px-10 py-4 rounded-2xl transition w-full">⏹ {t('Lõpeta ja järgmine', 'Stop and next')}</button></div>}
+              : <div className="w-full max-w-sm"><div className="flex-items-center justify-center gap-2 mb-4"><div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div><span className="text-red-400 font-medium">{t('Salvestamine...', 'Recording...')}</span></div><button onClick={stopAndTranscribe} className="bg-gray-700 hover:bg-gray-600 text-white font-bold text-lg px-10 py-4 rounded-2xl transition w-full">⏹ {t('Lõpeta ja järgmine', 'Stop and next')}</button></div>}
           </div>
         </div>
       </div>
@@ -395,9 +395,6 @@ export default function InterviewPage() {
     📄 {t('Tekstifail', 'Text file')}
   </label>
 </div>
-            <input type="file" accept="audio/*,.m4a,.mp3,.wav,.ogg,.webm,.txt,text/plain" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadAndUpdateReport(f); e.target.value = ''; }} />
-            📁 {t('Täienda raportit uue salvestisega', 'Improve report with new recording')}
-          </label>
         </div>
         {nextSessionQuestions.length > 0 && (
           <div className="bg-blue-950 border border-blue-800 rounded-2xl p-6 mb-4">
